@@ -1,4 +1,4 @@
-import { FilmIcon } from "lucide-react";
+import { FilmIcon, StarIcon } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -6,7 +6,7 @@ import { formatDuration } from "../lib/format-duration";
 import { formatFileSize } from "../lib/format-file-size";
 import type { Movie } from "../types";
 
-export function MovieCard({ movie }: { movie: Movie }) {
+export function MovieCard({ movie, showRating = false }: { movie: Movie; showRating?: boolean }) {
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
 
   return (
@@ -28,9 +28,19 @@ export function MovieCard({ movie }: { movie: Movie }) {
         {movie.quality && (
           <Badge
             variant="outline"
-            className="absolute top-2 left-2 border-transparent bg-background/80 font-mono tracking-wide backdrop-blur-sm"
+            className="absolute top-2 left-2 border-transparent bg-background/85 font-mono tracking-wide"
           >
             {movie.quality}
+          </Badge>
+        )}
+
+        {showRating && movie.rating !== undefined && (
+          <Badge
+            variant="outline"
+            className="absolute top-2 right-2 border-transparent bg-background/85 font-mono"
+          >
+            <StarIcon data-icon="inline-start" className="fill-current" />
+            {movie.rating.toFixed(1)}
           </Badge>
         )}
 

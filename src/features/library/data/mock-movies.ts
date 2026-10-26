@@ -8,6 +8,11 @@ const POSTERS = "https://upload.wikimedia.org/wikipedia/en/";
 export const mockMovies: Movie[] = [
   {
     id: "1",
+    isFavorite: true,
+    rating: 4.8,
+    filePath: "/media/movies/Poor_Things_2023.mkv",
+    addedAt: "2026-10-20T19:12:00Z",
+    lastPlayedAt: "2026-10-25T21:40:00Z",
     title: "Poor Things",
     thumbnail: `${POSTERS}f/f3/Poor_Things_poster.jpg`,
     year: 2023,
@@ -18,6 +23,9 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "2",
+    filePath: "/media/movies/Furiosa_A_Mad_Max_Saga_2024.mkv",
+    addedAt: "2026-10-24T09:30:00Z",
+    lastPlayedAt: "2026-10-23T22:05:00Z",
     title: "Furiosa: A Mad Max Saga",
     thumbnail: `${POSTERS}3/34/Furiosa_A_Mad_Max_Saga.jpg`,
     year: 2024,
@@ -28,6 +36,10 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "3",
+    inWatchlist: true,
+    rating: 4.7,
+    filePath: "/media/movies/Blade_Runner_2049_2017.mkv",
+    addedAt: "2026-09-02T18:00:00Z",
     title: "Blade Runner 2049",
     thumbnail: `${POSTERS}9/9b/Blade_Runner_2049_poster.png`,
     year: 2017,
@@ -37,6 +49,10 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "4",
+    isFavorite: true,
+    rating: 5,
+    filePath: "/media/movies/Spirited_Away_2001.mkv",
+    addedAt: "2026-08-14T12:00:00Z",
     title: "Spirited Away",
     thumbnail: `${POSTERS}d/db/Spirited_Away_Japanese_poster.png`,
     year: 2001,
@@ -46,6 +62,11 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "5",
+    isFavorite: true,
+    rating: 4.9,
+    filePath: "/media/movies/Arrival_2016.mkv",
+    addedAt: "2026-10-12T20:45:00Z",
+    lastPlayedAt: "2026-10-18T23:10:00Z",
     title: "Arrival",
     thumbnail: `${POSTERS}d/df/Arrival%2C_Movie_Poster.jpg`,
     year: 2016,
@@ -56,6 +77,10 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "6",
+    inWatchlist: true,
+    rating: 4.8,
+    filePath: "/media/movies/Parasite_2019.mkv",
+    addedAt: "2026-10-22T16:20:00Z",
     title: "Parasite",
     thumbnail: `${POSTERS}5/53/Parasite_%282019_film%29.png`,
     year: 2019,
@@ -65,6 +90,9 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "7",
+    inWatchlist: true,
+    filePath: "/media/movies/Dune_Part_Two_2024.mkv",
+    addedAt: "2026-10-26T08:15:00Z",
     title: "Dune: Part Two",
     thumbnail: `${POSTERS}5/52/Dune_Part_Two_poster.jpeg`,
     year: 2024,
@@ -74,6 +102,9 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "8",
+    inWatchlist: true,
+    filePath: "/media/movies/Everything_Everywhere_All_at_Once_2022.mkv",
+    addedAt: "2026-10-25T14:00:00Z",
     title: "Everything Everywhere All at Once",
     thumbnail: `${POSTERS}1/1e/Everything_Everywhere_All_at_Once.jpg`,
     year: 2022,
@@ -83,6 +114,9 @@ export const mockMovies: Movie[] = [
   },
   {
     id: "9",
+    inWatchlist: true,
+    filePath: "/media/movies/Past_Lives_2023.mkv",
+    addedAt: "2026-10-21T10:30:00Z",
     title: "Past Lives",
     thumbnail: `${POSTERS}d/da/Past_Lives_film_poster.png`,
     year: 2023,
