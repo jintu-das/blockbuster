@@ -7,7 +7,8 @@ import { formatDuration, formatFileSize, type Movie } from "@/features/library";
 
 export function ContinueWatchingHero({ movie }: { movie: Movie }) {
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
-  const remainingMinutes = Math.round(movie.durationMinutes * (1 - progress));
+  const remainingMinutes =
+    movie.durationMinutes !== undefined ? Math.round(movie.durationMinutes * (1 - progress)) : undefined;
 
   return (
     <section className="relative isolate overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
@@ -37,12 +38,16 @@ export function ContinueWatchingHero({ movie }: { movie: Movie }) {
                 {movie.quality}
               </Badge>
             )}
-            <Badge variant="secondary" className="font-mono">
-              {movie.year}
-            </Badge>
-            <Badge variant="secondary" className="font-mono">
-              {formatDuration(movie.durationMinutes)}
-            </Badge>
+            {movie.year !== undefined && (
+              <Badge variant="secondary" className="font-mono">
+                {movie.year}
+              </Badge>
+            )}
+            {movie.durationMinutes !== undefined && (
+              <Badge variant="secondary" className="font-mono">
+                {formatDuration(movie.durationMinutes)}
+              </Badge>
+            )}
             <Badge variant="secondary" className="font-mono">
               {formatFileSize(movie.sizeBytes)}
             </Badge>
@@ -50,7 +55,7 @@ export function ContinueWatchingHero({ movie }: { movie: Movie }) {
 
           <Progress value={progress * 100} className="max-w-xl">
             <ProgressLabel className="font-mono text-xs">
-              {formatDuration(remainingMinutes)} remaining
+              {remainingMinutes !== undefined ? `${formatDuration(remainingMinutes)} remaining` : "In progress"}
             </ProgressLabel>
             <span className="ml-auto font-mono text-xs text-muted-foreground">
               {Math.round(progress * 100)}% watched

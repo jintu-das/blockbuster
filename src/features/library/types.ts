@@ -1,8 +1,9 @@
 export type Movie = {
   id: string;
   title: string;
-  year: number;
-  durationMinutes: number;
+  year?: number;
+  /** Unknown until media metadata is read. */
+  durationMinutes?: number;
   sizeBytes: number;
   /** Short source label shown on the poster, e.g. "4K HDR". */
   quality?: string;
@@ -19,4 +20,10 @@ export type Movie = {
   isFavorite?: boolean;
   /** Personal rating from 0 to 5. */
   rating?: number;
+};
+
+export type ScanSummary = {
+  added: number;
+  updated: number;
+  missing: number;
 };

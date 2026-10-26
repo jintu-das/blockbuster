@@ -19,7 +19,13 @@ function Stat({ icon: Icon, value, label }: { icon: LucideIcon; value: string; l
 export function LibraryStats({ movies }: { movies: Movie[] }) {
   const movieCount = movies.length;
   const totalSizeBytes = movies.reduce((sum, movie) => sum + movie.sizeBytes, 0);
-  const totalMinutes = movies.reduce((sum, movie) => sum + movie.durationMinutes, 0);
+  const runtime = movies.reduce(
+    (total, movie) =>
+      movie.durationMinutes === undefined
+        ? total
+        : { minutes: total.minutes + movie.durationMinutes, known: total.known + 1 },
+    { minutes: 0, known: 0 },
+  );
   const inProgressCount = movies.filter((movie) => (movie.progress ?? 0) > 0).length;
 
   return (
@@ -27,7 +33,11 @@ export function LibraryStats({ movies }: { movies: Movie[] }) {
       <CardContent className="grid grid-cols-2 gap-6 md:grid-cols-4">
         <Stat icon={FilmIcon} value={String(movieCount)} label="Movies" />
         <Stat icon={HardDriveIcon} value={formatFileSize(totalSizeBytes)} label="On disk" />
-        <Stat icon={ClockIcon} value={`${Math.round(totalMinutes / 60)}h`} label="Total runtime" />
+        <Stat
+          icon={ClockIcon}
+          value={runtime.known > 0 ? `${Math.round(runtime.minutes / 60)}h` : "Not read yet"}
+          label="Total runtime"
+        />
         <Stat icon={PlayIcon} value={String(inProgressCount)} label="In progress" />
       </CardContent>
     </Card>

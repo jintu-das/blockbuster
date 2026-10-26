@@ -8,6 +8,9 @@ import type { Movie } from "../types";
 
 export function MovieCard({ movie, showRating = false }: { movie: Movie; showRating?: boolean }) {
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
+  const details = [movie.year, movie.durationMinutes !== undefined && formatDuration(movie.durationMinutes)].filter(
+    Boolean,
+  );
 
   return (
     <article className="group/movie flex min-w-0 flex-col gap-2">
@@ -58,7 +61,7 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
           {movie.title}
         </h3>
         <p className="font-mono text-xs text-muted-foreground">
-          {movie.year} • {formatDuration(movie.durationMinutes)} •{" "}
+          {details.map((detail) => `${detail} • `)}
           <span className="font-semibold text-foreground">{formatFileSize(movie.sizeBytes)}</span>
         </p>
       </div>
