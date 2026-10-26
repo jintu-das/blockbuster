@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The user picks one library folder; the Rust backend scans it into a SQLite catalog that the Home and Library pages display. Media metadata (duration, thumbnails) and playback are not implemented yet. The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress.
+Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The user picks one library folder; the Rust backend scans it into a SQLite catalog that the Home and Library pages display. Clicking a movie plays it in mpv with saved and resumed progress. Thumbnails and ffprobe metadata are not implemented yet (durations are filled in after a movie is first played). The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress.
 
 ## Commands
 
@@ -24,7 +24,7 @@ sudo dnf install webkit2gtk4.1-devel gtk3-devel glib2-devel openssl-devel \
   libappindicator-gtk3-devel librsvg2-devel libxdo-devel
 ```
 
-The runtime will also need `mpv` and `ffmpeg` on `PATH` once playback and thumbnails are implemented.
+Playback needs `mpv` on `PATH` (`sudo dnf install mpv`). Thumbnails will also need `ffmpeg`. Run `cargo test -- --ignored` for the integration test that drives real mpv headless (needs `mpv` and `ffmpeg`).
 
 ## Architecture
 
@@ -40,7 +40,8 @@ The runtime will also need `mpv` and `ffmpeg` on `PATH` once playback and thumbn
 - **Backend** (`src-tauri/`): `main.rs` only calls `blockbuster_lib::run()`. All app logic belongs in the library crate (`src/lib.rs` and modules under it). New commands are `#[tauri::command]` functions that must be registered in `tauri::generate_handler![...]` in `lib.rs`; argument names in `invoke` must match the Rust parameter names (camelCase on the JS side maps to snake_case in Rust). Every command is `async` and does its work inside the `blocking()` helper in `src/library/commands.rs` (`spawn_blocking`), so neither the main thread nor async workers wait on the DB lock or the file system.
   - **Database** (`src/db.rs`): one `rusqlite` connection (bundled SQLite) in managed state as `Db(Mutex<Connection>)`, stored at `<app data dir>/blockbuster.db` (`~/.local/share/com.jintudas.blockbuster/` on Linux). Migrations are a `MIGRATIONS` array applied by `PRAGMA user_version`: only append, never edit a shipped entry.
   - **Library** (`src/library/`): `scanner.rs` walks the folder (videos only, hidden entries skipped, no symlinks), `title.rs` derives title and year from the file name (`RELEASE_TAGS` end a title, word-like `TRAILING_TAGS` are only trimmed from its end), `catalog.rs` diffs a scan against the `movies` table (insert, update, mark `missing`; rows are never deleted so progress survives; a size change means a different file and clears duration/progress, a modification-time-only change keeps them; movies at or under unreadable paths are left alone; rows from a previous library folder are hidden but not counted as missing), `commands.rs` exposes `get_library_folder`, `set_library_folder`, `scan_library`, `list_movies`. Scans hold `ScanLock` for their whole run, and the folder setting plus scan results are written in one transaction, so a failed scan never changes the saved folder. Each Rust module carries its own `#[cfg(test)]` tests; DB tests use `db::open_in_memory()`.
+  - **Player** (`src/player/`, Unix only): `mpv.rs` launches mpv with an IPC socket in `$XDG_RUNTIME_DIR` (socket paths must stay under ~108 bytes, so never `TMPDIR`) and parses its JSON events; it overrides user config that breaks tracking (`keep-open`, `idle`, mpv's own resume). `session.rs` tracks one playback on a thread, saving every 10 s and on exit via `catalog::save_playback`; `progress_to_store` clears the position when watched past 95%, played to EOF or stopped under 10 s, and keeps it when no position was reported. When a session ends it emits the `playback-ended` event, which `usePlaybackSync` (mounted in `AppLayout`) turns into a catalog refetch. `commands.rs` exposes `play_movie(movie_id, from_start)`; one movie plays at a time (`Player` state), and `lib.rs` stops mpv on `RunEvent::Exit` so the position is saved when the app closes.
   - Media files are read-only; generated data (DB, future thumbnails) goes in the app data directory.
 - **Permissions**: Tauri 2 denies plugin APIs by default. Adding a plugin means adding it in `Cargo.toml`, calling `.plugin(...)` in `lib.rs`, installing the JS package, and granting its permissions in `src-tauri/capabilities/default.json` (currently `dialog:allow-open` for the folder picker).
-- **Planned components** (per README): FFmpeg/ffprobe for durations and thumbnails (columns `duration_seconds` already exist), and mpv controlled over its JSON IPC socket for playback and resume (`progress_seconds`, `last_played_at`).
+- **Planned components** (per README): FFmpeg/ffprobe for thumbnails and up-front durations.
 - `src-tauri/gen/` is generated by the Tauri build; do not edit it by hand.

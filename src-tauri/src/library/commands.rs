@@ -25,14 +25,14 @@ fn to_message(error: impl std::fmt::Display) -> String {
 
 /// Runs `work` on the blocking thread pool. Every command goes through this, so neither the
 /// main thread nor async runtime workers ever wait on the database lock or the file system.
-async fn blocking<T: Send + 'static>(
+pub(crate) async fn blocking<T: Send + 'static>(
     app: AppHandle,
     work: impl FnOnce(&AppHandle) -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(move || work(&app)).await.map_err(to_message)?
 }
 
-fn with_conn<T>(app: &AppHandle, work: impl FnOnce(&mut Connection) -> rusqlite::Result<T>) -> Result<T, String> {
+pub(crate) fn with_conn<T>(app: &AppHandle, work: impl FnOnce(&mut Connection) -> rusqlite::Result<T>) -> Result<T, String> {
     let db = app.state::<Db>();
     let mut conn = db.0.lock().map_err(to_message)?;
     work(&mut conn).map_err(to_message)

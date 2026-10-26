@@ -39,7 +39,16 @@ export const libraryApi = {
   setFolder: (path: string) => invoke<ScanSummary>("set_library_folder", { path }),
   scan: () => invoke<ScanSummary>("scan_library"),
   listMovies: async () => (await invoke<MovieDto[]>("list_movies")).map(toMovie),
+  play: (id: string, fromStart: boolean) => invoke<void>("play_movie", { movieId: Number(id), fromStart }),
 };
+
+/** Kept outside `libraryKeys.all`, so starting playback never marks scans as busy. */
+export const playerKeys = {
+  play: ["player", "play"] as const,
+};
+
+/** Emitted by the backend once a playback session has saved its final position. */
+export const PLAYBACK_ENDED_EVENT = "playback-ended";
 
 export const libraryKeys = {
   all: ["library"] as const,

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 
 use super::scanner::FolderScan;
@@ -139,6 +139,57 @@ pub fn list_movies(conn: &Connection) -> rusqlite::Result<Vec<MovieDto>> {
     rows.collect()
 }
 
+/// What a playback session wants stored as the resume position.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoredProgress {
+    /// Leave the saved position as it is (nothing reliable was observed).
+    Keep,
+    /// Forget the position, so the next play starts from the beginning.
+    Clear,
+    Seconds(i64),
+}
+
+pub struct PlaybackTarget {
+    pub path: String,
+    pub title: String,
+    pub progress_seconds: Option<i64>,
+}
+
+/// The file and saved position for a movie that is currently on disk.
+pub fn movie_for_playback(conn: &Connection, id: i64) -> rusqlite::Result<Option<PlaybackTarget>> {
+    conn.query_row(
+        "SELECT path, title, progress_seconds FROM movies WHERE id = ?1 AND missing = 0",
+        [id],
+        |row| Ok(PlaybackTarget { path: row.get(0)?, title: row.get(1)?, progress_seconds: row.get(2)? }),
+    )
+    .optional()
+}
+
+/// Records a playback session: always stamps `last_played_at`, fills in the duration when the
+/// player reported one, and updates the resume position as `progress` says.
+pub fn save_playback(
+    conn: &Connection,
+    id: i64,
+    progress: StoredProgress,
+    duration_seconds: Option<i64>,
+    now: i64,
+) -> rusqlite::Result<()> {
+    let (keep_progress, seconds) = match progress {
+        StoredProgress::Keep => (true, None),
+        StoredProgress::Clear => (false, None),
+        StoredProgress::Seconds(seconds) => (false, Some(seconds)),
+    };
+    conn.prepare_cached(
+        "UPDATE movies
+         SET last_played_at = ?2,
+             duration_seconds = COALESCE(?3, duration_seconds),
+             progress_seconds = CASE WHEN ?4 THEN progress_seconds ELSE ?5 END
+         WHERE id = ?1",
+    )?
+    .execute(params![id, now, duration_seconds, keep_progress, seconds])?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -260,5 +311,33 @@ mod tests {
 
         assert_eq!(summary, ScanSummary { added: 1, updated: 0, missing: 0 });
         assert_eq!(titles(&conn), vec!["B"]);
+    }
+
+    #[test]
+    fn playback_is_saved_and_read_back() {
+        let conn = open_in_memory();
+        apply_scan(&conn, &scan(&[file("/m/Arrival_2016.mkv", 1, 1)]), 1_793_000_000).unwrap();
+        let id = list_movies(&conn).unwrap()[0].id;
+
+        save_playback(&conn, id, StoredProgress::Seconds(1800), Some(6960), 500).unwrap();
+        let target = movie_for_playback(&conn, id).unwrap().unwrap();
+        assert_eq!((target.path.as_str(), target.title.as_str(), target.progress_seconds), ("/m/Arrival_2016.mkv", "Arrival", Some(1800)));
+
+        // Keep leaves the position and an unknown duration leaves the stored one.
+        save_playback(&conn, id, StoredProgress::Keep, None, 600).unwrap();
+        let movie = movie(&conn, "Arrival");
+        assert_eq!((movie.progress_seconds, movie.duration_seconds, movie.last_played_at), (Some(1800), Some(6960), Some(600)));
+
+        save_playback(&conn, id, StoredProgress::Clear, None, 700).unwrap();
+        assert_eq!(movie_for_playback(&conn, id).unwrap().unwrap().progress_seconds, None);
+    }
+
+    #[test]
+    fn missing_movies_cannot_be_played() {
+        let conn = open_in_memory();
+        apply_scan(&conn, &scan(&[file("/m/A.mkv", 1, 1)]), 100).unwrap();
+        let id = list_movies(&conn).unwrap()[0].id;
+        apply_scan(&conn, &scan(&[]), 200).unwrap();
+        assert!(movie_for_playback(&conn, id).unwrap().is_none());
     }
 }

@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress, ProgressLabel } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDuration, formatFileSize, type Movie } from "@/features/library";
+import { formatDuration, formatFileSize, usePlayMovie, type Movie } from "@/features/library";
 
 export function ContinueWatchingHero({ movie }: { movie: Movie }) {
+  const playMovie = usePlayMovie();
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const remainingMinutes =
     movie.durationMinutes !== undefined ? Math.round(movie.durationMinutes * (1 - progress)) : undefined;
@@ -63,12 +64,26 @@ export function ContinueWatchingHero({ movie }: { movie: Movie }) {
           </Progress>
 
           <div className="flex items-center gap-2">
-            <Button size="lg">
+            <Button
+              size="lg"
+              disabled={playMovie.isPending}
+              onClick={() => playMovie.mutate({ id: movie.id })}
+            >
               <PlayIcon data-icon="inline-start" />
               Resume
             </Button>
             <Tooltip>
-              <TooltipTrigger render={<Button variant="outline" size="icon-lg" aria-label="Play from start" />}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon-lg"
+                    aria-label="Play from start"
+                    disabled={playMovie.isPending}
+                    onClick={() => playMovie.mutate({ id: movie.id, fromStart: true })}
+                  />
+                }
+              >
                 <RotateCcwIcon />
               </TooltipTrigger>
               <TooltipContent>Play from start</TooltipContent>

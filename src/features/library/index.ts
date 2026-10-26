@@ -8,6 +8,8 @@ export { useChooseLibraryFolder } from "./hooks/use-choose-library-folder";
 export { useLibraryBusy } from "./hooks/use-library-busy";
 export { useLibraryFolder } from "./hooks/use-library-folder";
 export { useLibraryMovies } from "./hooks/use-library-movies";
+export { usePlaybackSync } from "./hooks/use-playback-sync";
+export { usePlayMovie } from "./hooks/use-play-movie";
 export { useScanLibrary } from "./hooks/use-scan-library";
 export { formatDuration } from "./lib/format-duration";
 export { formatFileSize } from "./lib/format-file-size";

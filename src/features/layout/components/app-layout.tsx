@@ -1,8 +1,11 @@
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { usePlaybackSync } from "@/features/library";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  usePlaybackSync();
+
   return (
     <SidebarProvider>
       <AppSidebar />

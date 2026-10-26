@@ -1,12 +1,15 @@
-import { FilmIcon, StarIcon } from "lucide-react";
+import { FilmIcon, PlayIcon, StarIcon } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
+import { usePlayMovie } from "../hooks/use-play-movie";
 import { formatDuration } from "../lib/format-duration";
 import { formatFileSize } from "../lib/format-file-size";
 import type { Movie } from "../types";
 
 export function MovieCard({ movie, showRating = false }: { movie: Movie; showRating?: boolean }) {
+  const playMovie = usePlayMovie();
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const details = [movie.year, movie.durationMinutes !== undefined && formatDuration(movie.durationMinutes)].filter(
     Boolean,
@@ -54,6 +57,22 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
             className="absolute inset-x-0 bottom-0 **:data-[slot=progress-track]:rounded-none **:data-[slot=progress-track]:bg-background/60"
           />
         )}
+
+        {/* Last child, so it sits above the badges and progress bar and takes every click on the poster. */}
+        <button
+          type="button"
+          aria-label={progress > 0 ? `Resume ${movie.title}` : `Play ${movie.title}`}
+          onClick={() => playMovie.mutate({ id: movie.id })}
+          disabled={playMovie.isPending}
+          className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-progress"
+        >
+          <span
+            data-pending={playMovie.isPending || undefined}
+            className="flex size-12 items-center justify-center rounded-full bg-background/85 text-foreground opacity-0 shadow-md transition-opacity group-focus-within/movie:opacity-100 group-hover/movie:opacity-100 data-pending:opacity-100"
+          >
+            {playMovie.isPending ? <Spinner /> : <PlayIcon className="fill-current" />}
+          </span>
+        </button>
       </AspectRatio>
 
       <div className="flex min-w-0 flex-col gap-0.5">
