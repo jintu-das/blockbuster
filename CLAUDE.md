@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The repo is currently the unmodified `create-tauri-app` scaffold (a sample `greet` command); the MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress.
+Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The frontend shell (sidebar, header, theme, Home and Libraries pages) is built on mock data; the Rust backend is still the `create-tauri-app` scaffold (a sample `greet` command). The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress.
 
 ## Commands
 
@@ -29,7 +29,11 @@ The runtime will also need `mpv` and `ffmpeg` on `PATH` once playback and thumbn
 ## Architecture
 
 - **Frontend** (`src/`): React app served by Vite. It calls the backend with `invoke("<command>", { args })` from `@tauri-apps/api/core`.
-  - **Routing**: TanStack Router, file-based. Each file in `src/routes/` is a page (`__root.tsx` is the shared layout and nav). The Vite plugin regenerates `src/routeTree.gen.ts` on dev/build; never edit it by hand.
+  - **Feature folders (required)**: all app code lives in `src/features/<feature>/`, split by role into `components/`, `hooks/`, `data/` (mocks, static config), `lib/` (pure helpers) and `types.ts`. Each feature exposes its public API through `index.ts`. Other features and routes import only from `@/features/<feature>`, never deep paths; files inside a feature use relative imports. Current features: `layout` (app shell: sidebar, header, disk usage), `theme` (provider, `useTheme`, toggle), `library` (movie grid and cards), `home`.
+  - **Outside features**: only shadcn-owned code (`src/components/ui`, `src/hooks`, `src/lib/utils.ts`, all written by `npx shadcn add` per `components.json`) and the entry point `src/main.tsx`, which mounts app-wide providers (`ThemeProvider`, `TooltipProvider`) above `RouterProvider`. Don't put app code in those shadcn folders.
+  - **Mock data**: lives in a feature's `data/` and is read through a hook (e.g. `useLibraryMovies`) that returns it only when `import.meta.env.DEV`, so release builds show real empty states. Replace the hook body, not its callers, when wiring the backend.
+  - **Theme**: `index.html` has an inline pre-paint script that applies the `dark` class; its storage key must match `THEME_STORAGE_KEY` in `src/features/theme/lib/theme-storage.ts`.
+  - **Routing**: TanStack Router, file-based. Route files in `src/routes/` stay thin: they only bind a path to a page component exported by a feature (`__root.tsx` wraps `<Outlet />` in `AppLayout`). The Vite plugin regenerates `src/routeTree.gen.ts` on dev/build; never edit it by hand.
   - **UI**: Tailwind v4 (configured in `src/index.css`, no `tailwind.config`) and shadcn/ui (`base-nova` style, Base UI primitives, lucide icons). Add components with `npx shadcn@latest add <name>`; they land in `src/components/ui/`. Base UI uses a `render` prop, not `asChild`. For nav links, style a router `Link` with `buttonVariants()`.
   - Import alias `@/` maps to `src/` (set in both `tsconfig.json` and `vite.config.ts`).
 - **Backend** (`src-tauri/`): `main.rs` only calls `blockbuster_lib::run()`. All app logic belongs in the library crate (`src/lib.rs` and modules under it). New commands are `#[tauri::command]` functions that must be registered in `tauri::generate_handler![...]` in `lib.rs`; argument names in `invoke` must match the Rust parameter names (camelCase on the JS side maps to snake_case in Rust).

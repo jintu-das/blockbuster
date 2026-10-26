@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Blockbuster</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a light flash.
+      // The storage key must match THEME_STORAGE_KEY in src/features/theme/lib/theme-storage.ts.
+      (function () {
+        var theme = "system";
+        try {
+          theme = localStorage.getItem("blockbuster-theme") || "system";
+        } catch (e) {}
+        var dark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+      })();
+    </script>
   </head>
 
   <body>

@@ -1,6 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { ClapperboardIcon, FolderOpenIcon, HardDriveIcon, HouseIcon } from "lucide-react";
-import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
+import { Link, useMatchRoute } from "@tanstack/react-router";
+import { ClapperboardIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,17 +12,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-
-const navItems = [
-  { title: "Home", to: "/", icon: HouseIcon },
-  { title: "Libraries", to: "/libraries", icon: FolderOpenIcon },
-] as const;
-
-// Placeholder until disk usage is read from the backend.
-const diskUsage = { usedGb: 312, totalGb: 500 };
+import { navItems } from "../data/navigation";
+import { DiskUsageCard } from "./disk-usage-card";
 
 export function AppSidebar() {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const matchRoute = useMatchRoute();
 
   return (
     <Sidebar>
@@ -50,7 +43,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton isActive={pathname === item.to} render={<Link to={item.to} />}>
+                  <SidebarMenuButton isActive={Boolean(matchRoute({ to: item.to, fuzzy: !item.exact }))} render={<Link to={item.to} />}>
                     <item.icon />
                     <span>{item.title}</span>
                   </SidebarMenuButton>
@@ -62,18 +55,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="flex flex-col gap-3 rounded-lg border bg-background p-3">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <HardDriveIcon className="text-muted-foreground" />
-            Storage
-          </div>
-          <Progress value={(diskUsage.usedGb / diskUsage.totalGb) * 100}>
-            <ProgressLabel className="text-xs text-muted-foreground">
-              {diskUsage.usedGb} GB of {diskUsage.totalGb} GB used
-            </ProgressLabel>
-            <ProgressValue className="ml-auto text-xs" />
-          </Progress>
-        </div>
+        <DiskUsageCard />
       </SidebarFooter>
     </Sidebar>
   );

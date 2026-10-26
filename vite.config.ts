@@ -14,6 +14,10 @@ export default defineConfig(() => ({
     react(),
     tailwindcss(),
   ],
+  // Tauri serves the bundle from local disk, so the web-oriented 500 kB warning is not meaningful.
+  build: {
+    chunkSizeWarningLimit: 1000,
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
