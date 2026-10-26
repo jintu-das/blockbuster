@@ -23,7 +23,9 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 - **React + TypeScript** for the user interface.
 - **SQLite** for the file catalog and playback progress.
 - **mpv** for video playback, controlled through its local IPC interface.
-- **FFmpeg** for reading duration and generating video thumbnails.
+- use third party api call for thumbnails
+
+<!-- - **FFmpeg** for reading duration and generating video thumbnails. -->
 
 The app will treat media files as read-only. Catalog data and generated thumbnails will be stored in Blockbuster's application data directory.
 
