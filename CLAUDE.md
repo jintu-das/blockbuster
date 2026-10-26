@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The frontend shell (sidebar, header, theme, Home and Libraries pages) is built on mock data; the Rust backend is still the `create-tauri-app` scaffold (a sample `greet` command). The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress.
+Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The frontend shell (sidebar, header, theme, Home and Library pages) is built on mock data; the Rust backend is still the `create-tauri-app` scaffold (a sample `greet` command). The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress.
 
 ## Commands
 

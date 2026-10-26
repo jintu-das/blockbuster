@@ -10,43 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as LibrariesRouteImport } from './routes/libraries'
+import { Route as LibraryRouteImport } from './routes/library'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LibrariesRoute = LibrariesRouteImport.update({
-  id: '/libraries',
-  path: '/libraries',
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/libraries': typeof LibrariesRoute
+  '/library': typeof LibraryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/libraries': typeof LibrariesRoute
+  '/library': typeof LibraryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/libraries': typeof LibrariesRoute
+  '/library': typeof LibraryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/libraries'
+  fullPaths: '/' | '/library'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/libraries'
-  id: '__root__' | '/' | '/libraries'
+  to: '/' | '/library'
+  id: '__root__' | '/' | '/library'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LibrariesRoute: typeof LibrariesRoute
+  LibraryRoute: typeof LibraryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,11 +58,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/libraries': {
-      id: '/libraries'
-      path: '/libraries'
-      fullPath: '/libraries'
-      preLoaderRoute: typeof LibrariesRouteImport
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -70,7 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LibrariesRoute: LibrariesRoute,
+  LibraryRoute: LibraryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
