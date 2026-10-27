@@ -3,11 +3,12 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use rusqlite::Connection;
+use tauri::ipc::Response;
 use tauri::{AppHandle, Manager};
 
 use super::catalog::{self, MovieDto, ScanSummary};
 use super::scanner;
-use crate::db;
+use crate::{db, media};
 
 const LIBRARY_FOLDER_KEY: &str = "library_folder";
 
@@ -40,11 +41,12 @@ pub(crate) fn with_conn<T>(app: &AppHandle, work: impl FnOnce(&mut Connection) -
 
 /// Walks `folder` and applies the result in one transaction. With `save_folder`, the folder
 /// setting is written in the same transaction, so it only changes if the scan succeeds.
+/// Afterwards a background pass fills in quality, duration and thumbnails.
 /// Callers must hold the `ScanLock`.
 fn scan_into_catalog(app: &AppHandle, folder: &str, save_folder: bool) -> Result<ScanSummary, String> {
     let scan = scanner::scan_folder(Path::new(folder))?;
     let now = scanner::unix_seconds(SystemTime::now());
-    with_conn(app, |conn| {
+    let summary = with_conn(app, |conn| {
         let tx = conn.transaction()?;
         if save_folder {
             db::set_setting(&tx, LIBRARY_FOLDER_KEY, folder)?;
@@ -52,7 +54,9 @@ fn scan_into_catalog(app: &AppHandle, folder: &str, save_folder: bool) -> Result
         let summary = catalog::apply_scan(&tx, &scan, now)?;
         tx.commit()?;
         Ok(summary)
-    })
+    })?;
+    media::spawn(app);
+    Ok(summary)
 }
 
 #[tauri::command]
@@ -88,4 +92,26 @@ pub async fn scan_library(app: AppHandle) -> Result<ScanSummary, String> {
 #[tauri::command]
 pub async fn list_movies(app: AppHandle) -> Result<Vec<MovieDto>, String> {
     blocking(app, |app| with_conn(app, |conn| catalog::list_movies(conn))).await
+}
+
+/// The JPEG bytes of a movie's poster or frame. Looked up by movie, never by path, so the
+/// webview can only read generated thumbnails. If the file has been deleted, the thumbnail is
+/// forgotten and a metadata pass makes a new one.
+#[tauri::command]
+pub async fn get_thumbnail(app: AppHandle, movie_id: i64) -> Result<Response, String> {
+    blocking(app, move |app| {
+        let file = with_conn(app, |conn| catalog::thumbnail_file(conn, movie_id))?
+            .ok_or("This movie has no thumbnail yet.")?;
+        let path = app.state::<media::Enrichment>().thumbnails_dir.join(file);
+        match std::fs::read(path) {
+            Ok(bytes) => Ok(Response::new(bytes)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                with_conn(app, |conn| media::forget_thumbnail(conn, movie_id))?;
+                media::spawn(app);
+                Err("The thumbnail is being made again.".into())
+            }
+            Err(error) => Err(to_message(error)),
+        }
+    })
+    .await
 }

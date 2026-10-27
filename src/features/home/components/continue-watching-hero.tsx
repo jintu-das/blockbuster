@@ -3,19 +3,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress, ProgressLabel } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDuration, formatFileSize, usePlayMovie, type Movie } from "@/features/library";
+import { formatDuration, formatFileSize, usePlayMovie, useThumbnail, type Movie } from "@/features/library";
 
 export function ContinueWatchingHero({ movie }: { movie: Movie }) {
   const playMovie = usePlayMovie();
+  const thumbnail = useThumbnail(movie);
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const remainingMinutes =
     movie.durationMinutes !== undefined ? Math.round(movie.durationMinutes * (1 - progress)) : undefined;
 
   return (
     <section className="relative isolate overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-      {movie.thumbnail && (
+      {thumbnail && (
         <img
-          src={movie.thumbnail}
+          src={thumbnail}
           alt=""
           className="absolute inset-0 -z-10 size-full object-cover object-top opacity-25"
         />
@@ -92,8 +93,8 @@ export function ContinueWatchingHero({ movie }: { movie: Movie }) {
         </div>
 
         <div className="hidden w-40 shrink-0 overflow-hidden rounded-lg bg-muted shadow-lg ring-1 ring-foreground/10 lg:block">
-          {movie.thumbnail ? (
-            <img src={movie.thumbnail} alt="" className="aspect-2/3 w-full object-cover" />
+          {thumbnail ? (
+            <img src={thumbnail} alt="" className="aspect-2/3 w-full object-cover" />
           ) : (
             <div className="flex aspect-2/3 items-center justify-center text-muted-foreground">
               <FilmIcon className="size-10" />

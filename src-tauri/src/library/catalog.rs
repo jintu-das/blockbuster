@@ -28,6 +28,11 @@ pub struct MovieDto {
     pub duration_seconds: Option<i64>,
     pub progress_seconds: Option<i64>,
     pub last_played_at: Option<i64>,
+    /// Resolution label from ffprobe, e.g. "4K HDR" or "1080p".
+    pub quality: Option<String>,
+    /// File name of the poster or frame image, once one has been made. The webview loads it
+    /// through `get_thumbnail`, since WebKitGTK blocks `asset://` images from the dev server.
+    pub thumbnail_file: Option<String>,
 }
 
 struct KnownFile {
@@ -39,7 +44,8 @@ struct KnownFile {
 /// Brings the catalog in line with a fresh folder scan:
 /// - new files are inserted;
 /// - files whose size changed are treated as a different file: they get a fresh title and year,
-///   and their duration and playback progress are cleared because they described the old file;
+///   and their duration, quality and playback progress are cleared because they described the old
+///   file (the thumbnail stays: the path, and so the movie, is the same);
 /// - files whose modification time alone changed (a copy or a touch) keep their metadata and
 ///   progress; only the stored time is refreshed, silently;
 /// - re-found files are un-marked as missing;
@@ -72,7 +78,7 @@ pub fn apply_scan(conn: &Connection, scan: &FolderScan, now: i64) -> rusqlite::R
     let mut replace = conn.prepare_cached(
         "UPDATE movies
          SET title = ?2, year = ?3, size_bytes = ?4, modified_at = ?5, missing = 0,
-             duration_seconds = NULL, progress_seconds = NULL
+             duration_seconds = NULL, progress_seconds = NULL, quality = NULL
          WHERE path = ?1",
     )?;
     let mut refresh = conn.prepare_cached("UPDATE movies SET modified_at = ?2, missing = 0 WHERE path = ?1")?;
@@ -119,7 +125,7 @@ pub fn apply_scan(conn: &Connection, scan: &FolderScan, now: i64) -> rusqlite::R
 pub fn list_movies(conn: &Connection) -> rusqlite::Result<Vec<MovieDto>> {
     let mut stmt = conn.prepare(
         "SELECT id, path, title, year, size_bytes, modified_at, added_at,
-                duration_seconds, progress_seconds, last_played_at
+                duration_seconds, progress_seconds, last_played_at, quality, thumbnail_file
          FROM movies WHERE missing = 0 ORDER BY title COLLATE NOCASE",
     )?;
     let rows = stmt.query_map([], |row| {
@@ -134,9 +140,18 @@ pub fn list_movies(conn: &Connection) -> rusqlite::Result<Vec<MovieDto>> {
             duration_seconds: row.get(7)?,
             progress_seconds: row.get(8)?,
             last_played_at: row.get(9)?,
+            quality: row.get(10)?,
+            thumbnail_file: row.get(11)?,
         })
     })?;
     rows.collect()
+}
+
+/// The thumbnail file name of a movie, if it has one.
+pub fn thumbnail_file(conn: &Connection, id: i64) -> rusqlite::Result<Option<String>> {
+    conn.query_row("SELECT thumbnail_file FROM movies WHERE id = ?1", [id], |row| row.get(0))
+        .optional()
+        .map(Option::flatten)
 }
 
 /// What a playback session wants stored as the resume position.
@@ -247,15 +262,22 @@ mod tests {
     fn changed_file_clears_stale_metadata_but_refound_file_keeps_it() {
         let conn = open_in_memory();
         apply_scan(&conn, &scan(&[file("/m/A.mkv", 10, 1), file("/m/B.mkv", 10, 1)]), 100).unwrap();
-        conn.execute("UPDATE movies SET duration_seconds = 6000, progress_seconds = 600", []).unwrap();
+        conn.execute(
+            "UPDATE movies SET duration_seconds = 6000, progress_seconds = 600, quality = '4K', thumbnail_file = 'x.jpg'",
+            [],
+        )
+        .unwrap();
 
         apply_scan(&conn, &scan(&[file("/m/A.mkv", 10, 1)]), 200).unwrap(); // B goes missing
         apply_scan(&conn, &scan(&[file("/m/A.mkv", 99, 5), file("/m/B.mkv", 10, 1)]), 300).unwrap();
 
         let a = movie(&conn, "A");
-        assert_eq!((a.duration_seconds, a.progress_seconds), (None, None));
+        assert_eq!((a.duration_seconds, a.progress_seconds, a.quality), (None, None, None));
+        assert_eq!(a.thumbnail_file.as_deref(), Some("x.jpg"));
+        assert_eq!(thumbnail_file(&conn, a.id).unwrap().as_deref(), Some("x.jpg"));
         let b = movie(&conn, "B");
         assert_eq!((b.duration_seconds, b.progress_seconds), (Some(6000), Some(600)));
+        assert_eq!(b.quality.as_deref(), Some("4K"));
     }
 
     #[test]

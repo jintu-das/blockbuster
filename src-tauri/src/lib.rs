@@ -1,5 +1,6 @@
 mod db;
 mod library;
+mod media;
 mod player;
 
 use std::sync::Mutex;
@@ -21,6 +22,11 @@ pub fn run() {
             app.manage(Db(Mutex::new(conn)));
             app.manage(ScanLock::default());
             app.manage(Player::default());
+            // Generated thumbnails go next to the catalog. Posters need an OMDb key.
+            let omdb_api_key = std::env::var("OMDB_API_KEY").ok();
+            app.manage(media::Enrichment::new(data_dir.join("thumbnails"), omdb_api_key));
+            // Backfill movies scanned before metadata existed, or whose last pass was cut short.
+            media::spawn(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -28,6 +34,7 @@ pub fn run() {
             commands::set_library_folder,
             commands::scan_library,
             commands::list_movies,
+            commands::get_thumbnail,
             player::commands::play_movie,
         ])
         .build(tauri::generate_context!())

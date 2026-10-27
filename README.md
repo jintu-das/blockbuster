@@ -11,7 +11,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 - Choose and remember one local library folder.
 - Scan the folder for common video file types and save the catalog locally.
 - Browse and search discovered files.
-- Generate a thumbnail and read duration for each video when possible.
+- Show a poster (OMDb) or a video frame (ffmpeg), plus quality and duration (ffprobe), for each video when possible.
 - Show useful fallbacks when thumbnail generation or metadata reading fails.
 - Open videos in mpv.
 - Save playback position and offer to resume on the next play.
@@ -23,9 +23,8 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 - **React + TypeScript** for the user interface.
 - **SQLite** for the file catalog and playback progress.
 - **mpv** for video playback, controlled through its local IPC interface.
-- use third party api call for thumbnails
-
-<!-- - **FFmpeg** for reading duration and generating video thumbnails. -->
+- **FFmpeg** (ffprobe) for reading quality and duration, and ffmpeg for frame thumbnails.
+- **OMDb API** for movie posters (TMDB is not reachable from India). Optional: set `OMDB_API_KEY`; without it, every movie gets a frame thumbnail.
 
 The app will treat media files as read-only. Catalog data and generated thumbnails will be stored in Blockbuster's application data directory.
 
@@ -40,7 +39,7 @@ The app will treat media files as read-only. Catalog data and generated thumbnai
 ## Out of scope for the first milestone
 
 - Multiple library folders or network/remote streaming.
-- Online movie metadata and poster lookup.
+- Online movie metadata beyond the poster (plot, cast, ratings).
 - Automatic TV season and episode matching.
 - Favorites, ratings, watchlists, and recommendations.
 - User accounts, cloud sync, and transcoding.

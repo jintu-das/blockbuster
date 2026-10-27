@@ -23,6 +23,16 @@ const MIGRATIONS: &[&str] = &[
         progress_seconds INTEGER,
         last_played_at   INTEGER
     );",
+    // v2: video quality and duration from ffprobe, and a poster or frame thumbnail per movie.
+    // `probed_size_bytes` is the file size ffprobe last read, so a changed file is probed again.
+    // `poster_lookup` is 1 once OMDb has answered for the movie (found or not).
+    "ALTER TABLE movies ADD COLUMN quality TEXT;
+    ALTER TABLE movies ADD COLUMN probed_size_bytes INTEGER;
+    ALTER TABLE movies ADD COLUMN thumbnail_file TEXT;
+    ALTER TABLE movies ADD COLUMN poster_lookup INTEGER NOT NULL DEFAULT 0;",
+    // v3: the file size at which ffmpeg could not grab a frame, so a broken or very short file
+    // is not retried on every pass, only after it changes.
+    "ALTER TABLE movies ADD COLUMN frame_failed_size INTEGER;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

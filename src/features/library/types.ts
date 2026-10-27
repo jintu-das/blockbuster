@@ -2,14 +2,15 @@ export type Movie = {
   id: string;
   title: string;
   year?: number;
-  /** Unknown until media metadata is read. */
+  /** Unknown until ffprobe or a playback session has read it. */
   durationMinutes?: number;
   sizeBytes: number;
-  /** Short source label shown on the poster, e.g. "4K HDR". */
+  /** Resolution label from ffprobe shown on the poster, e.g. "4K HDR". */
   quality?: string;
   /** Saved playback position as a fraction of the duration (0 to 1). */
   progress?: number;
-  thumbnail?: string;
+  /** File name of the generated poster (OMDb) or video frame; load it with `useThumbnail`. */
+  thumbnailFile?: string;
   /** Absolute path of the video file on disk. */
   filePath: string;
   /** ISO timestamp of when the scan first found the file. */

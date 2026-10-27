@@ -4,12 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { usePlayMovie } from "../hooks/use-play-movie";
+import { useThumbnail } from "../hooks/use-thumbnail";
 import { formatDuration } from "../lib/format-duration";
 import { formatFileSize } from "../lib/format-file-size";
 import type { Movie } from "../types";
 
 export function MovieCard({ movie, showRating = false }: { movie: Movie; showRating?: boolean }) {
   const playMovie = usePlayMovie();
+  const thumbnail = useThumbnail(movie);
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const details = [movie.year, movie.durationMinutes !== undefined && formatDuration(movie.durationMinutes)].filter(
     Boolean,
@@ -18,9 +20,9 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
   return (
     <article className="group/movie flex min-w-0 flex-col gap-2">
       <AspectRatio ratio={2 / 3} className="overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
-        {movie.thumbnail ? (
+        {thumbnail ? (
           <img
-            src={movie.thumbnail}
+            src={thumbnail}
             alt=""
             className="size-full object-cover transition-transform duration-300 group-hover/movie:scale-105"
           />

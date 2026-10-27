@@ -13,6 +13,9 @@ type MovieDto = {
   durationSeconds: number | null;
   progressSeconds: number | null;
   lastPlayedAt: number | null;
+  quality: string | null;
+  /** File name of the generated poster or frame; load it with `get_thumbnail`. */
+  thumbnailFile: string | null;
 };
 
 function toIso(unixSeconds: number) {
@@ -31,7 +34,18 @@ function toMovie(dto: MovieDto): Movie {
     addedAt: toIso(dto.addedAt),
     lastPlayedAt: dto.lastPlayedAt !== null ? toIso(dto.lastPlayedAt) : undefined,
     progress: progressSeconds !== null && durationSeconds ? progressSeconds / durationSeconds : undefined,
+    quality: dto.quality ?? undefined,
+    thumbnailFile: dto.thumbnailFile ?? undefined,
   };
+}
+
+function toDataUrl(bytes: ArrayBuffer) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(new Blob([bytes], { type: "image/jpeg" }));
+  });
 }
 
 export const libraryApi = {
@@ -39,7 +53,17 @@ export const libraryApi = {
   setFolder: (path: string) => invoke<ScanSummary>("set_library_folder", { path }),
   scan: () => invoke<ScanSummary>("scan_library"),
   listMovies: async () => (await invoke<MovieDto[]>("list_movies")).map(toMovie),
+  /** JPEG bytes, as a data URL so the query cache can hold it without leaking object URLs. */
+  thumbnail: async (id: string) => toDataUrl(await invoke<ArrayBuffer>("get_thumbnail", { movieId: Number(id) })),
   play: (id: string, fromStart: boolean) => invoke<void>("play_movie", { movieId: Number(id), fromStart }),
+};
+
+/**
+ * Kept outside `libraryKeys.all`, so catalog invalidations never reload images. The file name is
+ * part of the key: a poster replacing a frame gets a new name and so a fresh load.
+ */
+export const thumbnailKeys = {
+  of: (id: string, file: string | undefined) => ["thumbnail", id, file] as const,
 };
 
 /** Kept outside `libraryKeys.all`, so starting playback never marks scans as busy. */
@@ -49,6 +73,9 @@ export const playerKeys = {
 
 /** Emitted by the backend once a playback session has saved its final position. */
 export const PLAYBACK_ENDED_EVENT = "playback-ended";
+
+/** Emitted by the backend as the metadata pass fills in qualities, durations and thumbnails. */
+export const LIBRARY_UPDATED_EVENT = "library-updated";
 
 export const libraryKeys = {
   all: ["library"] as const,
