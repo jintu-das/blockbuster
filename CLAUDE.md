@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The user picks one library folder; the Rust backend scans it into a SQLite catalog that the Home and Library pages display. Clicking a movie plays it in mpv with saved and resumed progress. After each scan a background pass reads quality and duration with ffprobe and makes a thumbnail (OMDb poster, else an ffmpeg frame). The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Planned architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress, posters and quality.
+Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The user picks one library folder; the Rust backend scans it into a SQLite catalog that the Home and Library pages display. Clicking a movie plays it in mpv with saved and resumed progress. After each scan a background pass reads quality and duration with ffprobe and makes a thumbnail (OMDb poster, else an ffmpeg frame). The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Features", "Architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress, posters and quality.
 
 ## Commands
 
