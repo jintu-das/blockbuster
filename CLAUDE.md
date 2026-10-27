@@ -28,6 +28,8 @@ Playback needs `mpv` on `PATH` (`sudo dnf install mpv`). Quality, durations and 
 
 ## Architecture
 
+Diagrams of the components, the scan/metadata flow and playback: [docs/architecture.md](docs/architecture.md). Update them when those flows change.
+
 - **Frontend** (`src/`): React app served by Vite. It calls the backend with `invoke("<command>", { args })` from `@tauri-apps/api/core`.
   - **Feature folders (required)**: all app code lives in `src/features/<feature>/`, split by role into `components/`, `hooks/`, `api/` (Tauri `invoke` wrappers and DTO mappers), `data/` (static config, mocks), `lib/` (pure helpers) and `types.ts`. Each feature exposes its public API through `index.ts`. Other features and routes import only from `@/features/<feature>`, never deep paths; files inside a feature use relative imports. Current features: `layout` (app shell: sidebar, header, disk usage), `theme` (provider, `useTheme`, toggle), `library` (catalog data, folder picker, movie grid and cards), `home`.
   - **Outside features**: only shadcn-owned code (`src/components/ui`, `src/hooks`, `src/lib/utils.ts`, all written by `npx shadcn add` per `components.json`) and the entry point `src/main.tsx`, which mounts app-wide providers (`QueryClientProvider`, `ThemeProvider`, `TooltipProvider`, `Toaster`) above `RouterProvider`. Don't put app code in those shadcn folders.
