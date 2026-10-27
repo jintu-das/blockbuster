@@ -128,3 +128,26 @@
     @apply font-sans;
     }
 }
+/* Home billboard: a slow push-in on the key art, and the per-slide timer bar that drives rotation. */
+@theme {
+  --animate-billboard-zoom: billboard-zoom 14s ease-out forwards;
+  --animate-billboard-timer: billboard-timer 8s linear forwards;
+
+  @keyframes billboard-zoom {
+    from {
+      transform: scale(1.08);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes billboard-timer {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+}
