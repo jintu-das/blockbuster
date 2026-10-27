@@ -49,7 +49,7 @@ export function HomePage() {
         movies={sections.recentlyAdded}
         action={
           <Link
-            to="/library"
+            to="/movies"
             className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             View all

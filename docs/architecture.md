@@ -10,7 +10,7 @@ The frontend only talks to the backend through `invoke()` commands, and the back
 flowchart LR
   subgraph WV["Webview: React 19 + TanStack Query"]
     direction TB
-    R["routes/ (thin)<br/>/ → HomePage<br/>/library → LibraryPage"]
+    R["routes/ (thin)<br/>/ → HomePage<br/>/movies → LibraryPage<br/>/movies/$movieId → MovieDetailsPage"]
     F["features/<br/>layout · home · library · theme"]
     Q[("Query cache<br/>['library', …]<br/>['thumbnail', id, file]")]
     S["useCatalogSync<br/>(in AppLayout)"]
@@ -60,7 +60,7 @@ A scan only diffs the folder against the catalog, so it stays fast. Quality, dur
 ```mermaid
 sequenceDiagram
   actor U as User
-  participant UI as React (Library page)
+  participant UI as React (Movies page)
   participant C as scan_library
   participant DB as SQLite
   participant E as enrich pass (thread)

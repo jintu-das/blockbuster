@@ -21,7 +21,7 @@ export function LibraryPage() {
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="font-heading text-2xl font-semibold">Library</h1>
+          <h1 className="font-heading text-2xl font-semibold">Movies</h1>
           {folder && (
             <p className="truncate font-mono text-xs text-muted-foreground" title={folder}>
               {hasMovies && `${formatMovieCount(movies.length)} • `}

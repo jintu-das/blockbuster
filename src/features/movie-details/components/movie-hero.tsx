@@ -52,10 +52,10 @@ export function MovieHero({ movie }: { movie: MovieDetails }) {
             Back
           </Button>
         ) : (
-          // Opened directly (no history entry to return to), so fall back to the library.
-          <Link to="/library" className={buttonVariants({ variant: "secondary", size: "sm", className: backClassName })}>
+          // Opened directly (no history entry to return to), so fall back to the movie list.
+          <Link to="/movies" className={buttonVariants({ variant: "secondary", size: "sm", className: backClassName })}>
             <ArrowLeftIcon data-icon="inline-start" />
-            Library
+            Movies
           </Link>
         )}
 

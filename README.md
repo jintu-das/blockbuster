@@ -12,7 +12,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 |---|---|
 | Choose and remember one library folder | Done |
 | Scan for common video files into a local SQLite catalog | Done |
-| Browse the catalog (Home and Library pages) | Done |
+| Browse the catalog (Home and Movies pages) | Done |
 | Quality badge (4K, 1080p, HDR) and duration from ffprobe | Done |
 | Posters from OMDb, with an ffmpeg frame as fallback | Done |
 | Movie details page: OMDb plot, credits and ratings, plus streams from ffprobe, stored for offline use | Done |

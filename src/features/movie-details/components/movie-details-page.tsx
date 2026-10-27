@@ -46,8 +46,8 @@ export function MovieDetailsPage({ movieId }: { movieId: string }) {
           <EmptyDescription>It may have been moved or deleted from your library folder.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Link to="/library" className={buttonVariants({ variant: "outline" })}>
-            Go to library
+          <Link to="/movies" className={buttonVariants({ variant: "outline" })}>
+            Go to movies
           </Link>
         </EmptyContent>
       </Empty>
