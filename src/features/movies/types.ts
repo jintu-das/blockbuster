@@ -3,7 +3,7 @@ export type WatchStatus = "unwatched" | "in-progress" | "watched";
 /** The resolution part of a quality label such as "4K HDR". */
 export type Resolution = "4K" | "1080p" | "720p" | "SD";
 
-export type SortKey = "added" | "played" | "title" | "year" | "size";
+export type SortKey = "added" | "played" | "played-oldest" | "title" | "year" | "size";
 
 export type GroupKey = "letter" | "decade" | "quality" | "status" | "folder";
 

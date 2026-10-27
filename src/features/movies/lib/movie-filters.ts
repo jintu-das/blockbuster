@@ -13,6 +13,7 @@ export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "title", label: "Title A–Z" },
   { value: "added", label: "Recently added" },
   { value: "played", label: "Recently played" },
+  { value: "played-oldest", label: "Played longest ago" },
   { value: "year", label: "Release year" },
   { value: "size", label: "File size" },
 ];

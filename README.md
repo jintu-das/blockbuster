@@ -21,7 +21,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 | Search the catalog | Not started |
 | Scan progress display | Not started |
 | Real disk usage in the sidebar | Mock data |
-| Watchlist and favorites on Home | Home sections are a shuffled catalog for now |
+| Streaming-style Home (featured billboard, shelves from catalog data) | Done; watchlist and favorites remain out of scope |
 
 ## Setup (Fedora)
 

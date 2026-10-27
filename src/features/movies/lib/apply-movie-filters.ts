@@ -36,10 +36,17 @@ function matches(movie: Movie, filters: MovieFilters, query: string) {
   return true;
 }
 
-// Newest or largest first; movies missing the value go last, then by title.
+/** Earliest play first; never-played movies go last. */
+function playedOldestFirst(a: Movie, b: Movie) {
+  if (!a.lastPlayedAt || !b.lastPlayedAt) return (a.lastPlayedAt ? -1 : 0) + (b.lastPlayedAt ? 1 : 0);
+  return a.lastPlayedAt.localeCompare(b.lastPlayedAt);
+}
+
+// Newest or largest first (except "played-oldest"); movies missing the value go last, then by title.
 const comparators: Record<SortKey, (a: Movie, b: Movie) => number> = {
   added: (a, b) => b.addedAt.localeCompare(a.addedAt),
   played: (a, b) => (b.lastPlayedAt ?? "").localeCompare(a.lastPlayedAt ?? ""),
+  "played-oldest": playedOldestFirst,
   title: () => 0,
   year: (a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity),
   size: (a, b) => b.sizeBytes - a.sizeBytes,

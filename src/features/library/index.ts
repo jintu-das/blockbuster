@@ -4,6 +4,7 @@ export { libraryKeys } from "./api/library-api";
 export { MovieCard } from "./components/movie-card";
 export { MovieGrid } from "./components/movie-grid";
 export { MovieGridSkeleton } from "./components/movie-grid-skeleton";
+export { PosterImage } from "./components/poster-image";
 export { useCatalogSync } from "./hooks/use-catalog-sync";
 export { useChooseLibraryFolder } from "./hooks/use-choose-library-folder";
 export { useInView } from "./hooks/use-in-view";

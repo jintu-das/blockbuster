@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FilmIcon, PlayIcon, StarIcon } from "lucide-react";
+import { PlayIcon, StarIcon } from "lucide-react";
 import { useRef } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { useThumbnail } from "../hooks/use-thumbnail";
 import { formatDuration } from "../lib/format-duration";
 import { formatFileSize } from "../lib/format-file-size";
 import type { Movie } from "../types";
+import { PosterImage } from "./poster-image";
 
 export function MovieCard({ movie, showRating = false }: { movie: Movie; showRating?: boolean }) {
   const playMovie = usePlayMovie();
@@ -28,18 +29,11 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
         ratio={2 / 3}
         className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10 transition-all duration-300 group-hover/movie:-translate-y-1 group-hover/movie:shadow-xl group-hover/movie:ring-primary/60"
       >
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt=""
-            className="size-full object-cover transition-transform duration-300 group-hover/movie:scale-105"
-          />
-        ) : (
-          <div className="flex size-full flex-col items-center justify-center gap-3 p-4 text-center text-muted-foreground">
-            <FilmIcon className="size-10" />
-            <span className="line-clamp-2 font-heading text-sm font-medium">{movie.title}</span>
-          </div>
-        )}
+        <PosterImage
+          src={thumbnail}
+          title={movie.title}
+          className="transition-transform duration-300 group-hover/movie:scale-105"
+        />
 
         {movie.quality && (
           <Badge
