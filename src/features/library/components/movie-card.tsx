@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { FilmIcon, PlayIcon, StarIcon } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +80,13 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
 
       <div className="flex min-w-0 flex-col gap-0.5">
         <h3 className="truncate font-heading text-base font-semibold" title={movie.title}>
-          {movie.title}
+          <Link
+            to="/movies/$movieId"
+            params={{ movieId: movie.id }}
+            className="rounded-sm outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {movie.title}
+          </Link>
         </h3>
         <p className="font-mono text-xs text-muted-foreground">
           {details.map((detail) => `${detail} • `)}

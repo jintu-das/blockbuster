@@ -4,7 +4,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 /// Schema migrations, applied in order. `PRAGMA user_version` records how many have run,
 /// so only append new entries; never edit one that has shipped.
-const MIGRATIONS: &[&str] = &[
+const MIGRATIONS: [&str; 3] = [
     // v1: library folder setting and the movie catalog.
     "CREATE TABLE settings (
         key   TEXT PRIMARY KEY,

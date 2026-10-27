@@ -34,6 +34,7 @@ function toMovie(dto: MovieDto): Movie {
     addedAt: toIso(dto.addedAt),
     lastPlayedAt: dto.lastPlayedAt !== null ? toIso(dto.lastPlayedAt) : undefined,
     progress: progressSeconds !== null && durationSeconds ? progressSeconds / durationSeconds : undefined,
+    progressSeconds: progressSeconds ?? undefined,
     quality: dto.quality ?? undefined,
     thumbnailFile: dto.thumbnailFile ?? undefined,
   };

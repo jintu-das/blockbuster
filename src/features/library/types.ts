@@ -9,6 +9,8 @@ export type Movie = {
   quality?: string;
   /** Saved playback position as a fraction of the duration (0 to 1). */
   progress?: number;
+  /** Saved playback position in seconds, where mpv resumes. */
+  progressSeconds?: number;
   /** File name of the generated poster (OMDb) or video frame; load it with `useThumbnail`. */
   thumbnailFile?: string;
   /** Absolute path of the video file on disk. */
