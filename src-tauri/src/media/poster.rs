@@ -9,7 +9,15 @@ use serde::Deserialize;
 const OMDB_URL: &str = "https://www.omdbapi.com/";
 const HTTP_TIMEOUT: Duration = Duration::from_secs(15);
 
-/// OMDb's reply to a title lookup. Fields are capitalized and "N/A" means absent.
+/// A movie OMDb identified: its reply verbatim (kept for the details page) and its poster.
+#[derive(Debug, PartialEq)]
+pub struct OmdbMatch {
+    pub json: String,
+    pub poster_url: Option<String>,
+}
+
+/// The fields of an OMDb lookup reply that matching needs. Fields are capitalized and "N/A"
+/// means absent.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct OmdbReply {
@@ -33,7 +41,8 @@ struct SearchReply {
 #[serde(rename_all = "PascalCase")]
 struct SearchHit {
     title: String,
-    poster: Option<String>,
+    #[serde(rename = "imdbID")]
+    imdb_id: String,
 }
 
 pub struct Omdb {
@@ -47,42 +56,48 @@ impl Omdb {
         Omdb { agent, api_key }
     }
 
-    /// The poster URL for a movie. `Ok(None)` is a definite "no poster"; `Err` is a network,
+    /// The OMDb entry for a movie. `Ok(None)` is a definite "not found"; `Err` is a network,
     /// key or rate-limit problem worth retrying later.
     ///
     /// With a year, the title and year are looked up; on a miss the title is tried alone and
     /// accepted only if OMDb's year is within one of ours. Without a year, a title alone is
-    /// ambiguous (remakes), so a poster is only taken when exactly one search result has the
-    /// same title.
-    pub fn poster_url(&self, title: &str, year: Option<i32>) -> Result<Option<String>, String> {
+    /// ambiguous (remakes), so a movie is only taken when exactly one search result has the
+    /// same title. Search results lack plot and credits, so that one is then looked up by id.
+    pub fn find(&self, title: &str, year: Option<i32>) -> Result<Option<OmdbMatch>, String> {
         if normalize(title).is_empty() {
             return Ok(None);
         }
         let Some(year) = year else {
-            return self.search(title).map(|hits| unique_poster(title, &hits));
+            let hits = self.search(title)?;
+            return match unique_hit(title, &hits) {
+                Some(hit) => Ok(self.lookup(&[("i", &hit.imdb_id)])?.map(to_match)),
+                None => Ok(None),
+            };
         };
-        if let Some(reply) = self.lookup(title, Some(year))? {
-            return Ok(poster_of(reply.poster));
+        if let Some(found) = self.lookup(&[("t", title), ("y", &year.to_string())])? {
+            return Ok(Some(to_match(found)));
         }
-        let Some(reply) = self.lookup(title, None)? else {
+        let Some(found) = self.lookup(&[("t", title)])? else {
             return Ok(None);
         };
-        match reply.year.as_deref().and_then(first_year) {
+        match found.0.year.as_deref().and_then(first_year) {
             Some(theirs) if (year - theirs).abs() > 1 => Ok(None),
-            _ => Ok(poster_of(reply.poster)),
+            _ => Ok(Some(to_match(found))),
         }
     }
 
-    fn lookup(&self, title: &str, year: Option<i32>) -> Result<Option<OmdbReply>, String> {
-        let mut request = self.request().query("t", title);
-        if let Some(year) = year {
-            request = request.query("y", year.to_string());
+    /// A lookup by title (`t`, optionally `y`) or IMDb id (`i`), with the reply's raw text.
+    fn lookup(&self, params: &[(&str, &str)]) -> Result<Option<(OmdbReply, String)>, String> {
+        let mut request = self.request().query("plot", "full");
+        for (key, value) in params {
+            request = request.query(*key, *value);
         }
-        let reply: OmdbReply = request
+        let json = request
             .call()
-            .and_then(|mut response| response.body_mut().read_json())
+            .and_then(|mut response| response.body_mut().read_to_string())
             .map_err(|error| format!("OMDb: {error}"))?;
-        Ok(answered(&reply.response, reply.error.as_deref())?.then_some(reply))
+        let reply: OmdbReply = serde_json::from_str(&json).map_err(|error| format!("OMDb: {error}"))?;
+        Ok(answered(&reply.response, reply.error.as_deref())?.then_some((reply, json)))
     }
 
     fn search(&self, title: &str) -> Result<Vec<SearchHit>, String> {
@@ -132,11 +147,15 @@ fn poster_of(poster: Option<String>) -> Option<String> {
     poster.filter(|url| url.starts_with("http"))
 }
 
-fn unique_poster(title: &str, hits: &[SearchHit]) -> Option<String> {
+fn to_match((reply, json): (OmdbReply, String)) -> OmdbMatch {
+    OmdbMatch { poster_url: poster_of(reply.poster), json }
+}
+
+fn unique_hit<'a>(title: &str, hits: &'a [SearchHit]) -> Option<&'a SearchHit> {
     let wanted = normalize(title);
     let mut same_title = hits.iter().filter(|hit| normalize(&hit.title) == wanted);
     match (same_title.next(), same_title.next()) {
-        (Some(hit), None) => poster_of(hit.poster.clone()),
+        (Some(hit), None) => Some(hit),
         _ => None,
     }
 }
@@ -180,16 +199,17 @@ pub fn extract_frame(video: &Path, at_seconds: i64, dest: &Path) -> io::Result<b
 mod tests {
     use super::*;
 
-    fn hit(title: &str, poster: &str) -> SearchHit {
-        SearchHit { title: title.into(), poster: Some(poster.into()) }
+    fn hit(title: &str, imdb_id: &str) -> SearchHit {
+        SearchHit { title: title.into(), imdb_id: imdb_id.into() }
     }
 
     #[test]
-    fn reads_posters() {
-        let reply: OmdbReply =
-            serde_json::from_str(r#"{"Response":"True","Year":"1992","Poster":"https://m.media-amazon.com/x.jpg"}"#)
-                .unwrap();
-        assert_eq!(poster_of(reply.poster).as_deref(), Some("https://m.media-amazon.com/x.jpg"));
+    fn keeps_the_reply_verbatim_and_reads_its_poster() {
+        let json = r#"{"Title":"Ran","Year":"1985","Plot":"An aging lord...","Poster":"https://m.media-amazon.com/x.jpg","Response":"True"}"#;
+        let reply: OmdbReply = serde_json::from_str(json).unwrap();
+        let found = to_match((reply, json.to_string()));
+        assert_eq!(found.json, json);
+        assert_eq!(found.poster_url.as_deref(), Some("https://m.media-amazon.com/x.jpg"));
         assert_eq!(poster_of(Some("N/A".into())), None);
     }
 
@@ -205,20 +225,20 @@ mod tests {
 
     #[test]
     fn year_less_titles_need_one_unambiguous_match() {
-        let hits = [hit("Dune", "https://a.jpg"), hit("Dune", "https://b.jpg"), hit("Dune: Part Two", "https://c.jpg")];
-        assert_eq!(unique_poster("Dune", &hits), None);
+        let hits = [hit("Dune", "tt0087182"), hit("Dune", "tt1160419"), hit("Dune: Part Two", "tt15239678")];
+        assert!(unique_hit("Dune", &hits).is_none());
 
-        let hits = [hit("What's Eating Gilbert Grape", "https://g.jpg"), hit("Grape", "https://x.jpg")];
-        assert_eq!(unique_poster("Whats Eating Gilbert Grape", &hits).as_deref(), Some("https://g.jpg"));
-        assert_eq!(unique_poster("Absentia", &hits), None);
+        let hits = [hit("What's Eating Gilbert Grape", "tt0108550"), hit("Grape", "tt0000001")];
+        assert_eq!(unique_hit("Whats Eating Gilbert Grape", &hits).map(|hit| hit.imdb_id.as_str()), Some("tt0108550"));
+        assert!(unique_hit("Absentia", &hits).is_none());
     }
 
     #[test]
     fn search_replies_parse_with_and_without_results() {
         let found: SearchReply =
-            serde_json::from_str(r#"{"Search":[{"Title":"Tess","Year":"1979","Poster":"N/A"}],"Response":"True"}"#)
+            serde_json::from_str(r#"{"Search":[{"Title":"Tess","Year":"1979","imdbID":"tt0080009","Poster":"N/A"}],"Response":"True"}"#)
                 .unwrap();
-        assert_eq!(found.search.len(), 1);
+        assert_eq!(found.search[0].imdb_id, "tt0080009");
         let missed: SearchReply = serde_json::from_str(r#"{"Response":"False","Error":"Movie not found!"}"#).unwrap();
         assert!(missed.search.is_empty());
     }
@@ -249,5 +269,9 @@ mod tests {
 
         let probe = super::super::probe::probe(&clip).unwrap();
         assert_eq!((probe.quality.as_deref(), probe.duration_seconds), (Some("SD"), Some(5)));
+        let media = probe.media.expect("ffprobe lists the clip's streams");
+        assert_eq!(media.container.as_deref(), Some("Matroska"));
+        assert_eq!(media.streams.iter().map(|stream| stream.kind).collect::<Vec<_>>(), ["video"]);
+        assert_eq!(media.streams[0].fps, Some(25.0));
     }
 }

@@ -15,6 +15,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 | Browse the catalog (Home and Library pages) | Done |
 | Quality badge (4K, 1080p, HDR) and duration from ffprobe | Done |
 | Posters from OMDb, with an ffmpeg frame as fallback | Done |
+| Movie details page: OMDb plot, credits and ratings, plus streams from ffprobe, stored for offline use | Done |
 | Play in mpv, save position, resume on next play | Done (Linux/Unix only) |
 | Keep progress for files that go missing and come back | Done |
 | Search the catalog | Not started |
@@ -61,7 +62,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 ## How it works
 
 1. Choose a folder. Blockbuster scans it and saves the catalog. Media files are only ever read.
-2. A background pass reads each movie's quality and duration, then fetches a poster or grabs a frame. Cards fill in as it goes.
+2. A background pass reads each movie's quality, duration and streams, then fetches its OMDb details and poster or grabs a frame. Cards and details pages fill in as it goes, and everything is stored, so details work offline.
 3. Click a movie to play it in mpv. The position is saved every 10 seconds and when mpv closes.
 4. Play it again to resume. Movies watched past 95% start over.
 
@@ -86,14 +87,13 @@ sqlite3 -readonly -header -column ~/.local/share/com.jintudas.blockbuster/blockb
 - **SQLite** (bundled via rusqlite) for the catalog and playback progress.
 - **mpv** for playback, controlled through its JSON IPC socket.
 - **ffprobe / ffmpeg** for quality, duration and frame thumbnails.
-- **OMDb API** for posters.
+- **OMDb API** for posters, plot, credits and ratings.
 
 Diagrams of the components and main flows are in [docs/architecture.md](docs/architecture.md). Code conventions and module details are in [CLAUDE.md](CLAUDE.md).
 
 ## Out of scope for the first milestone
 
 - Multiple library folders or network/remote streaming.
-- Online movie metadata beyond the poster (plot, cast, ratings).
 - Automatic TV season and episode matching.
 - Favorites, ratings, watchlists, and recommendations.
 - User accounts, cloud sync, and transcoding.

@@ -1,6 +1,7 @@
 export { LibraryEmptyState } from "./components/library-empty-state";
 export { LibraryLoadError } from "./components/library-load-error";
 export { LibraryPage } from "./components/library-page";
+export { libraryKeys } from "./api/library-api";
 export { MovieCard } from "./components/movie-card";
 export { MovieGrid } from "./components/movie-grid";
 export { MovieGridSkeleton } from "./components/movie-grid-skeleton";
@@ -12,6 +13,7 @@ export { useLibraryMovies } from "./hooks/use-library-movies";
 export { usePlayMovie } from "./hooks/use-play-movie";
 export { useScanLibrary } from "./hooks/use-scan-library";
 export { useThumbnail } from "./hooks/use-thumbnail";
+export { errorMessage } from "./lib/error-message";
 export { formatDuration } from "./lib/format-duration";
 export { formatFileSize } from "./lib/format-file-size";
 export type { Movie, ScanSummary } from "./types";

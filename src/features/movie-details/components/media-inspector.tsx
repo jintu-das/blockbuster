@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { formatFileSize } from "@/features/library";
+import { codecLabel, formatBitrate, streamSummary } from "../lib/describe-stream";
 import type { MediaStream, MovieDetails } from "../types";
 import { SectionLabel } from "./section-label";
 
@@ -20,10 +21,10 @@ function StreamRow({ stream, index }: { stream: MediaStream; index: number }) {
           <Icon className="size-3.5 text-primary" />
           {streamLabels[stream.kind]} #{index}
         </span>
-        <span className="text-muted-foreground">{stream.codec}</span>
+        <span className="text-muted-foreground">{codecLabel(stream)}</span>
       </div>
       <p className="font-mono text-xs text-muted-foreground">
-        {[stream.summary, stream.language].filter(Boolean).join(" • ")}
+        {streamSummary(stream)}
       </p>
     </li>
   );
@@ -77,11 +78,13 @@ export function MediaInspector({ movie }: { movie: MovieDetails }) {
               {movie.sizeBytes.toLocaleString()} bytes
             </span>
           </div>
-          {media && (
+          {media?.container && (
             <div className="flex flex-col rounded-lg bg-muted p-3">
               <SectionLabel>Container</SectionLabel>
               <span className="font-mono text-base font-semibold">{media.container}</span>
-              <span className="font-mono text-[11px] text-muted-foreground">{media.bitrateMbps.toFixed(1)} Mbps</span>
+              {media.bitrateKbps !== null && (
+                <span className="font-mono text-[11px] text-muted-foreground">{formatBitrate(media.bitrateKbps)}</span>
+              )}
             </div>
           )}
         </div>

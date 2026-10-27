@@ -31,21 +31,32 @@ export type OmdbMetadata = {
 /** A catalog movie plus its OMDb metadata, which is missing when OMDb had no match or no key is set. */
 export type MovieDetails = Movie & { omdb?: OmdbMetadata; media?: MediaInfo };
 
+/** A stream from ffprobe, as the backend stores it (`probe::MediaStream`). */
 export type MediaStream = {
   kind: "video" | "audio" | "subtitle";
-  /** Codec as ffprobe names it for people, e.g. "HEVC (Main 10)", "Dolby TrueHD". */
+  /** ffprobe's codec name, e.g. "hevc", "truehd", "hdmv_pgs_subtitle". */
   codec: string;
-  /** One-line summary, e.g. "3840x2160 @ 23.976 fps • HDR10". */
-  summary: string;
-  language?: string;
+  profile: string | null;
+  width: number | null;
+  height: number | null;
+  fps: number | null;
+  hdr: boolean;
+  /** The track players pick unless told otherwise. */
+  default: boolean;
+  channels: number | null;
+  /** e.g. "7.1", "5.1(side)", "stereo". */
+  channelLayout: string | null;
+  sampleRate: number | null;
+  bitrateKbps: number | null;
+  /** ISO 639-2 code, e.g. "eng". */
+  language: string | null;
+  title: string | null;
 };
 
-/** Container and stream details from ffprobe. */
+/** Container and embedded streams from ffprobe, as the backend stores them (`probe::MediaInfo`). */
 export type MediaInfo = {
   /** e.g. "Matroska". */
-  container: string;
-  bitrateMbps: number;
-  /** Short audio label for the hero badges, e.g. "Dolby Atmos 7.1". */
-  audioLabel?: string;
+  container: string | null;
+  bitrateKbps: number | null;
   streams: MediaStream[];
 };

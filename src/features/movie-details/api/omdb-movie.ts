@@ -50,7 +50,7 @@ export function toOmdbMetadata(dto: OmdbMovieDto): OmdbMetadata {
     languages: list(dto.Language),
     countries: list(dto.Country),
     awards: present(dto.Awards),
-    ratings: dto.Ratings.map((rating) => ({ source: rating.Source, value: rating.Value })),
+    ratings: (dto.Ratings ?? []).map((rating) => ({ source: rating.Source, value: rating.Value })),
     imdbRating: present(dto.imdbRating),
     imdbVotes: present(dto.imdbVotes),
     boxOffice: present(dto.BoxOffice),

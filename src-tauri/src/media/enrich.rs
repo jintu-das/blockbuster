@@ -27,6 +27,11 @@ pub struct Enrichment {
 }
 
 impl Enrichment {
+    /// Whether OMDb lookups run at all (an API key is set).
+    pub fn has_omdb(&self) -> bool {
+        self.omdb.is_some()
+    }
+
     /// Posters are only looked up when `omdb_api_key` is set; otherwise every movie gets a frame.
     pub fn new(thumbnails_dir: PathBuf, omdb_api_key: Option<String>) -> Self {
         Enrichment {
@@ -95,6 +100,7 @@ struct Pending {
     probed: bool,
     thumbnail_file: Option<String>,
     poster_lookup: bool,
+    details_lookup: bool,
     frame_failed: bool,
 }
 
@@ -151,13 +157,15 @@ fn forget_deleted_thumbnails(app: &AppHandle, thumbnails_dir: &Path) -> Result<(
 fn pending(conn: &Connection, has_omdb: bool) -> rusqlite::Result<Vec<Pending>> {
     let mut stmt = conn.prepare(
         "SELECT id, path, title, year, size_bytes, duration_seconds, probed_size_bytes IS size_bytes,
-                thumbnail_file, poster_lookup, frame_failed_size IS size_bytes
+                thumbnail_file, poster_lookup, details_lookup, frame_failed_size IS size_bytes
          FROM movies
          WHERE missing = 0
            AND (probed_size_bytes IS NOT size_bytes
                 OR (thumbnail_file IS NULL AND frame_failed_size IS NOT size_bytes)
-                OR (?1 AND poster_lookup = 0))
-         ORDER BY title COLLATE NOCASE",
+                OR (?1 AND (poster_lookup = 0 OR details_lookup = 0)))
+         -- Movies never looked up come first, so a catch-up of older ones can't spend the daily
+         -- OMDb quota before new movies get their posters.
+         ORDER BY poster_lookup, title COLLATE NOCASE",
     )?;
     let rows = stmt.query_map([has_omdb], |row| {
         Ok(Pending {
@@ -170,7 +178,8 @@ fn pending(conn: &Connection, has_omdb: bool) -> rusqlite::Result<Vec<Pending>> 
             probed: row.get(6)?,
             thumbnail_file: row.get(7)?,
             poster_lookup: row.get(8)?,
-            frame_failed: row.get(9)?,
+            details_lookup: row.get(9)?,
+            frame_failed: row.get(10)?,
         })
     })?;
     rows.collect()
@@ -198,22 +207,34 @@ fn enrich(app: &AppHandle, state: &Enrichment, tools: &mut Tools, mut movie: Pen
         }
     }
 
-    if let (Some(omdb), false, true) = (&state.omdb, movie.poster_lookup, tools.omdb) {
+    let looked_up = movie.poster_lookup && movie.details_lookup;
+    if let (Some(omdb), false, true) = (&state.omdb, looked_up, tools.omdb) {
         let file = format!("{}-poster.jpg", movie.id);
-        let downloaded = omdb
-            .poster_url(&movie.title, movie.year)
-            .and_then(|url| url.map_or(Ok(false), |url| omdb.download(&url, &state.thumbnails_dir.join(&file))));
-        match downloaded {
-            Ok(true) => {
-                with_conn(app, |conn| save_poster(conn, movie.id, Some(&file)))?;
+        let dest = state.thumbnails_dir.join(&file);
+        // The poster is downloaded again even when one exists (a catch-up lookup), so the poster
+        // on disk and the stored reply always describe the same match.
+        let found = omdb.find(&movie.title, movie.year).and_then(|found| {
+            let Some(found) = found else { return Ok((None, false)) };
+            let downloaded = match &found.poster_url {
+                Some(url) => omdb.download(url, &dest)?,
+                None => false,
+            };
+            Ok((Some(found.json), downloaded))
+        });
+        match found {
+            Ok((json, true)) => {
+                with_conn(app, |conn| save_poster(conn, movie.id, Some(&file), json.as_deref()))?;
                 if let Some(old) = movie.thumbnail_file.as_deref().filter(|old| *old != file) {
                     let _ = fs::remove_file(state.thumbnails_dir.join(old));
                 }
                 movie.thumbnail_file = Some(file);
                 changed = true;
             }
-            // OMDb answered: no poster, or a dead image link. Not asked again.
-            Ok(false) => with_conn(app, |conn| save_poster(conn, movie.id, None))?,
+            // OMDb answered: not found, no poster, or a dead image link. Not asked again.
+            Ok((json, false)) => {
+                with_conn(app, |conn| save_poster(conn, movie.id, None, json.as_deref()))?;
+                changed |= json.is_some();
+            }
             Err(error) => {
                 eprintln!("blockbuster: poster lookup stopped for this pass: {error}");
                 tools.omdb = false;
@@ -248,20 +269,26 @@ fn enrich(app: &AppHandle, state: &Enrichment, tools: &mut Tools, mut movie: Pen
 /// Stores a probe for the file version of `size_bytes`. The size check skips the write if a
 /// rescan replaced the file meanwhile.
 fn save_probe(conn: &Connection, id: i64, size_bytes: i64, probe: &Probe) -> rusqlite::Result<()> {
+    let media_json = probe.media.as_ref().and_then(|media| serde_json::to_string(media).ok());
     conn.execute(
         "UPDATE movies
-         SET quality = ?2, duration_seconds = COALESCE(duration_seconds, ?3), probed_size_bytes = ?4
+         SET quality = ?2, duration_seconds = COALESCE(duration_seconds, ?3), probed_size_bytes = ?4,
+             media_json = ?5
          WHERE id = ?1 AND size_bytes = ?4",
-        params![id, probe.quality, probe.duration_seconds, size_bytes],
+        params![id, probe.quality, probe.duration_seconds, size_bytes, media_json],
     )?;
     Ok(())
 }
 
-/// Records that OMDb answered for the movie, with the downloaded poster if there is one.
-fn save_poster(conn: &Connection, id: i64, poster: Option<&str>) -> rusqlite::Result<()> {
+/// Records that OMDb answered for the movie, with its reply if it found the movie and the
+/// downloaded poster if there is one.
+fn save_poster(conn: &Connection, id: i64, poster: Option<&str>, omdb_json: Option<&str>) -> rusqlite::Result<()> {
     conn.execute(
-        "UPDATE movies SET poster_lookup = 1, thumbnail_file = COALESCE(?2, thumbnail_file) WHERE id = ?1",
-        params![id, poster],
+        "UPDATE movies
+         SET poster_lookup = 1, details_lookup = 1, thumbnail_file = COALESCE(?2, thumbnail_file),
+             omdb_json = COALESCE(?3, omdb_json)
+         WHERE id = ?1",
+        params![id, poster, omdb_json],
     )?;
     Ok(())
 }
@@ -293,6 +320,7 @@ pub fn forget_thumbnail(conn: &Connection, id: i64) -> rusqlite::Result<()> {
 mod tests {
     use super::*;
     use crate::db::open_in_memory;
+    use crate::media::probe::MediaInfo;
 
     fn insert(conn: &Connection, id: i64, title: &str) {
         conn.execute(
@@ -307,7 +335,7 @@ mod tests {
     }
 
     fn probe_1080p() -> Probe {
-        Probe { quality: Some("1080p".into()), duration_seconds: Some(6000) }
+        Probe { quality: Some("1080p".into()), duration_seconds: Some(6000), media: None }
     }
 
     #[test]
@@ -323,7 +351,7 @@ mod tests {
         assert!(pending_ids(&conn, false).is_empty());
         assert_eq!(pending_ids(&conn, true), vec![1], "a key brings back movies never looked up");
 
-        save_poster(&conn, 1, Some("1-poster.jpg")).unwrap();
+        save_poster(&conn, 1, Some("1-poster.jpg"), None).unwrap();
         assert!(pending_ids(&conn, true).is_empty());
     }
 
@@ -362,7 +390,7 @@ mod tests {
         insert(&conn, 1, "A");
         save_probe(&conn, 1, 100, &probe_1080p()).unwrap();
         save_frame(&conn, 1, "1-frame.jpg").unwrap();
-        save_poster(&conn, 1, None).unwrap();
+        save_poster(&conn, 1, None, None).unwrap();
 
         assert!(pending_ids(&conn, true).is_empty());
         let file: String = conn.query_row("SELECT thumbnail_file FROM movies", [], |row| row.get(0)).unwrap();
@@ -377,18 +405,52 @@ mod tests {
         for id in [1, 2] {
             save_probe(&conn, id, 100, &probe_1080p()).unwrap();
         }
-        save_poster(&conn, 1, Some("1-poster.jpg")).unwrap();
+        save_poster(&conn, 1, Some("1-poster.jpg"), None).unwrap();
         save_frame(&conn, 2, "2-frame.jpg").unwrap();
-        save_poster(&conn, 2, None).unwrap();
+        save_poster(&conn, 2, None, None).unwrap();
 
         forget_thumbnail(&conn, 1).unwrap();
         forget_thumbnail(&conn, 2).unwrap();
 
         let movies = pending(&conn, true).unwrap();
-        assert_eq!(movies.iter().map(|movie| movie.id).collect::<Vec<_>>(), vec![2, 1]);
+        assert_eq!(movies.iter().map(|movie| movie.id).collect::<Vec<_>>(), vec![1, 2]);
         assert!(movies.iter().all(|movie| movie.thumbnail_file.is_none()));
         let lookups: Vec<bool> = movies.iter().map(|movie| movie.poster_lookup).collect();
-        assert_eq!(lookups, vec![true, false], "only a lost poster is looked up again");
+        assert_eq!(lookups, vec![false, true], "only a lost poster is looked up again");
+    }
+
+    #[test]
+    fn details_json_is_stored_and_a_later_miss_keeps_it() {
+        let conn = open_in_memory();
+        insert(&conn, 1, "A");
+        let media = MediaInfo { container: Some("Matroska".into()), bitrate_kbps: Some(8000), streams: Vec::new() };
+        save_probe(&conn, 1, 100, &Probe { media: Some(media), ..probe_1080p() }).unwrap();
+        save_poster(&conn, 1, Some("1-poster.jpg"), Some(r#"{"Title":"A"}"#)).unwrap();
+        save_poster(&conn, 1, None, None).unwrap();
+
+        let (omdb, media): (String, String) = conn
+            .query_row("SELECT omdb_json, media_json FROM movies", [], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap();
+        assert_eq!(omdb, r#"{"Title":"A"}"#);
+        assert_eq!(media, r#"{"container":"Matroska","bitrateKbps":8000,"streams":[]}"#);
+    }
+
+    #[test]
+    fn a_catch_up_lookup_waits_behind_movies_never_looked_up() {
+        let conn = open_in_memory();
+        insert(&conn, 1, "A");
+        insert(&conn, 2, "B");
+        for id in [1, 2] {
+            save_probe(&conn, id, 100, &probe_1080p()).unwrap();
+            save_frame(&conn, id, &format!("{id}-frame.jpg")).unwrap();
+        }
+        // A was looked up before replies were stored (as after migration v5).
+        conn.execute("UPDATE movies SET poster_lookup = 1 WHERE id = 1", []).unwrap();
+
+        let movies = pending(&conn, true).unwrap();
+        assert_eq!(movies.iter().map(|movie| movie.id).collect::<Vec<_>>(), vec![2, 1]);
+        assert!(movies[1].poster_lookup && !movies[1].details_lookup);
+        assert!(pending_ids(&conn, false).is_empty(), "no key, no lookups");
     }
 
     #[test]

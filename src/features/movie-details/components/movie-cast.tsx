@@ -16,11 +16,11 @@ export function MovieCast({ actors }: { actors: string[] }) {
         <UsersIcon className="size-4 text-primary" />
         Starring
       </h2>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-5 md:grid-cols-5">
         {actors.map((actor) => (
           <li
             key={actor}
-            className="flex flex-col items-center gap-2 rounded-xl bg-card p-3 text-center ring-1 ring-foreground/10"
+            className="flex flex-col items-center gap-2 rounded-xl  p-3 text-center"
           >
             <span className="flex size-14 items-center justify-center rounded-full bg-muted font-heading text-lg font-semibold text-muted-foreground">
               {initials(actor)}

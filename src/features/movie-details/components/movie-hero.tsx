@@ -5,6 +5,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration, usePlayMovie, useThumbnail } from "@/features/library";
+import { audioLabel, formatBitrate } from "../lib/describe-stream";
 import { formatTimestamp } from "../lib/format-timestamp";
 import type { MovieDetails } from "../types";
 
@@ -27,6 +28,7 @@ export function MovieHero({ movie }: { movie: MovieDetails }) {
   const playMovie = usePlayMovie();
   const thumbnail = useThumbnail(movie);
   const { omdb, media } = movie;
+  const audio = media && audioLabel(media.streams);
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const resumeAt = progress > 0 ? movie.progressSeconds : undefined;
   const facts = [
@@ -60,14 +62,14 @@ export function MovieHero({ movie }: { movie: MovieDetails }) {
         <div className="flex max-w-4xl flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             {movie.quality && <Badge className="font-mono tracking-wider uppercase">{movie.quality}</Badge>}
-            {media?.audioLabel && (
+            {audio && (
               <Badge variant="secondary" className="font-mono">
-                {media.audioLabel}
+                {audio}
               </Badge>
             )}
-            {media && (
+            {media?.bitrateKbps != null && (
               <Badge variant="secondary" className="font-mono">
-                {media.bitrateMbps.toFixed(1)} Mbps
+                {formatBitrate(media.bitrateKbps)}
               </Badge>
             )}
             {facts.map((fact) => (

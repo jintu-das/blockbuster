@@ -1,19 +1,36 @@
 import { Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { FilmIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LibraryLoadError, useLibraryMovies } from "@/features/library";
-import { mockMovieMetadata } from "../data/mock-movie-details";
+import { toast } from "@/components/ui/toast";
+import { errorMessage, LibraryLoadError, useLibraryMovies } from "@/features/library";
+import type { OmdbStatus } from "../api/movie-details-api";
+import { useMovieDetails } from "../hooks/use-movie-details";
 import type { MovieDetails } from "../types";
 import { MediaInspector } from "./media-inspector";
 import { MovieCast } from "./movie-cast";
 import { MovieHero } from "./movie-hero";
 import { MovieSynopsis } from "./movie-synopsis";
 
+const omdbStatusNotes: Record<Exclude<OmdbStatus, "found">, string> = {
+  "no-key": "Set OMDB_API_KEY to fetch the plot, credits and ratings.",
+  pending: "Fetching the plot, credits and ratings in the background.",
+  "not-found": "OMDb has no match for this title, so there is no plot, credits or ratings.",
+};
+
 export function MovieDetailsPage({ movieId }: { movieId: string }) {
   const { movies, isLoading, error, refetch } = useLibraryMovies();
   const catalogMovie = movies.find((movie) => movie.id === movieId);
+  // Only movies in the catalog have details; this also keeps bad ids from reaching the backend.
+  const { data: details, error: detailsError } = useMovieDetails(movieId, { enabled: catalogMovie !== undefined });
+
+  useEffect(() => {
+    if (detailsError) {
+      toast.add({ title: "Couldn't load movie details", description: errorMessage(detailsError), type: "error" });
+    }
+  }, [detailsError]);
 
   if (error) return <LibraryLoadError error={error} onRetry={refetch} />;
   if (isLoading) return <Skeleton className="h-[420px] rounded-xl" />;
@@ -37,15 +54,15 @@ export function MovieDetailsPage({ movieId }: { movieId: string }) {
     );
   }
 
-  const movie: MovieDetails = { ...catalogMovie, ...mockMovieMetadata };
+  const movie: MovieDetails = { ...catalogMovie, omdb: details?.omdb, media: details?.media };
   const { omdb } = movie;
 
   return (
     <div className="flex flex-1 flex-col gap-6">
       <MovieHero movie={movie} />
-      <p className="-mt-3 font-mono text-xs text-muted-foreground">
-        Plot, credits, ratings and stream details are sample data until metadata is stored.
-      </p>
+      {details && details.omdbStatus !== "found" && (
+        <p className="-mt-3 font-mono text-xs text-muted-foreground">{omdbStatusNotes[details.omdbStatus]}</p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-8">

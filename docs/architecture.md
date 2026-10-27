@@ -1,6 +1,6 @@
 # Architecture
 
-Blockbuster is a Tauri 2 desktop app. A React frontend in the webview calls a Rust backend over Tauri IPC. The backend owns all state in one SQLite file and drives three external tools: mpv for playback, ffprobe/ffmpeg for metadata and frames, and the OMDb web API for posters. Module-level detail lives in [CLAUDE.md](../CLAUDE.md).
+Blockbuster is a Tauri 2 desktop app. A React frontend in the webview calls a Rust backend over Tauri IPC. The backend owns all state in one SQLite file and drives three external tools: mpv for playback, ffprobe/ffmpeg for metadata and frames, and the OMDb web API for posters and movie details (stored, so the details page works offline). Module-level detail lives in [CLAUDE.md](../CLAUDE.md).
 
 ## Components
 
@@ -19,7 +19,7 @@ flowchart LR
 
   subgraph RS["Rust backend: blockbuster_lib"]
     direction TB
-    CMD["Commands (all via blocking())<br/>get/set_library_folder · scan_library<br/>list_movies · get_thumbnail · play_movie"]
+    CMD["Commands (all via blocking())<br/>get/set_library_folder · scan_library<br/>list_movies · get_movie_details · get_thumbnail · play_movie"]
     LIB["library/<br/>scanner · title · catalog"]
     PLY["player/<br/>mpv · session"]
     MED["media/<br/>enrich (PassGate) · probe · poster"]
@@ -75,15 +75,16 @@ sequenceDiagram
   UI->>UI: invalidate ['library'] → list_movies
 
   loop each pending movie
-    E->>T: ffprobe → quality, duration
+    E->>T: ffprobe → quality, duration, streams
     E->>DB: save_probe
-    E->>T: OMDb poster (if key) → download
-    E->>DB: save_poster
+    E->>T: OMDb lookup (if key) → reply + poster download
+    E->>DB: save_poster (thumbnail + omdb_json)
     E->>T: ffmpeg frame (if still no image)
     E->>DB: save_frame / save_frame_failed
     E--)UI: library-updated (throttled 3 s)
     UI->>C: list_movies → new thumbnailFile
-    UI->>C: get_thumbnail(id) → JPEG → data URL
+    UI->>C: get_thumbnail(id) → JPEG → data URL (cards: once near the viewport)
+    UI->>C: get_movie_details(id) → omdb_json, media_json (details page)
   end
 ```
 

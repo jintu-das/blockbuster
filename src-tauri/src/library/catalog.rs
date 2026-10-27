@@ -7,6 +7,20 @@ use serde::Serialize;
 use super::scanner::FolderScan;
 use super::title::{parse_title, year_of};
 
+/// Stored metadata for the details page, as JSON text the webview parses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MovieDetailsDto {
+    /// OMDb's reply verbatim, once OMDb has matched the movie.
+    pub omdb_json: Option<String>,
+    /// Whether OMDb has answered a lookup for this movie; with no `omdb_json`, that was a miss.
+    pub omdb_looked_up: bool,
+    /// Whether OMDb lookups run at all (an API key is set). Filled in by the command.
+    pub omdb_enabled: bool,
+    /// Container and streams from ffprobe (`probe::MediaInfo`), for the current file version.
+    pub media_json: Option<String>,
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanSummary {
@@ -78,7 +92,7 @@ pub fn apply_scan(conn: &Connection, scan: &FolderScan, now: i64) -> rusqlite::R
     let mut replace = conn.prepare_cached(
         "UPDATE movies
          SET title = ?2, year = ?3, size_bytes = ?4, modified_at = ?5, missing = 0,
-             duration_seconds = NULL, progress_seconds = NULL, quality = NULL
+             duration_seconds = NULL, progress_seconds = NULL, quality = NULL, media_json = NULL
          WHERE path = ?1",
     )?;
     let mut refresh = conn.prepare_cached("UPDATE movies SET modified_at = ?2, missing = 0 WHERE path = ?1")?;
@@ -152,6 +166,23 @@ pub fn thumbnail_file(conn: &Connection, id: i64) -> rusqlite::Result<Option<Str
     conn.query_row("SELECT thumbnail_file FROM movies WHERE id = ?1", [id], |row| row.get(0))
         .optional()
         .map(Option::flatten)
+}
+
+/// The stored details of a movie that is currently on disk.
+pub fn movie_details(conn: &Connection, id: i64) -> rusqlite::Result<Option<MovieDetailsDto>> {
+    conn.query_row(
+        "SELECT omdb_json, details_lookup, media_json FROM movies WHERE id = ?1 AND missing = 0",
+        [id],
+        |row| {
+            Ok(MovieDetailsDto {
+                omdb_json: row.get(0)?,
+                omdb_looked_up: row.get(1)?,
+                omdb_enabled: false,
+                media_json: row.get(2)?,
+            })
+        },
+    )
+    .optional()
 }
 
 /// What a playback session wants stored as the resume position.
@@ -263,7 +294,8 @@ mod tests {
         let conn = open_in_memory();
         apply_scan(&conn, &scan(&[file("/m/A.mkv", 10, 1), file("/m/B.mkv", 10, 1)]), 100).unwrap();
         conn.execute(
-            "UPDATE movies SET duration_seconds = 6000, progress_seconds = 600, quality = '4K', thumbnail_file = 'x.jpg'",
+            "UPDATE movies SET duration_seconds = 6000, progress_seconds = 600, quality = '4K', thumbnail_file = 'x.jpg',
+                               omdb_json = '{}', media_json = '{}'",
             [],
         )
         .unwrap();
@@ -275,9 +307,23 @@ mod tests {
         assert_eq!((a.duration_seconds, a.progress_seconds, a.quality), (None, None, None));
         assert_eq!(a.thumbnail_file.as_deref(), Some("x.jpg"));
         assert_eq!(thumbnail_file(&conn, a.id).unwrap().as_deref(), Some("x.jpg"));
+        let details = movie_details(&conn, a.id).unwrap().unwrap();
+        assert_eq!((details.omdb_json.as_deref(), details.media_json), (Some("{}"), None), "streams were the old file's");
         let b = movie(&conn, "B");
         assert_eq!((b.duration_seconds, b.progress_seconds), (Some(6000), Some(600)));
         assert_eq!(b.quality.as_deref(), Some("4K"));
+    }
+
+    #[test]
+    fn details_of_missing_movies_are_hidden() {
+        let conn = open_in_memory();
+        apply_scan(&conn, &scan(&[file("/m/A.mkv", 10, 1)]), 100).unwrap();
+        let id = movie(&conn, "A").id;
+        let details = MovieDetailsDto { omdb_json: None, omdb_looked_up: false, omdb_enabled: false, media_json: None };
+        assert_eq!(movie_details(&conn, id).unwrap(), Some(details));
+
+        apply_scan(&conn, &scan(&[]), 200).unwrap();
+        assert_eq!(movie_details(&conn, id).unwrap(), None);
     }
 
     #[test]

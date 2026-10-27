@@ -4,7 +4,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 /// Schema migrations, applied in order. `PRAGMA user_version` records how many have run,
 /// so only append new entries; never edit one that has shipped.
-const MIGRATIONS: [&str; 3] = [
+const MIGRATIONS: [&str; 5] = [
     // v1: library folder setting and the movie catalog.
     "CREATE TABLE settings (
         key   TEXT PRIMARY KEY,
@@ -33,6 +33,18 @@ const MIGRATIONS: [&str; 3] = [
     // v3: the file size at which ffmpeg could not grab a frame, so a broken or very short file
     // is not retried on every pass, only after it changes.
     "ALTER TABLE movies ADD COLUMN frame_failed_size INTEGER;",
+    // v4: the raw OMDb reply and ffprobe's stream list, for the details page. Movies OMDb already
+    // matched are looked up once more to store the reply (misses stay misses), and every file is
+    // probed again for its streams.
+    "ALTER TABLE movies ADD COLUMN omdb_json TEXT;
+    ALTER TABLE movies ADD COLUMN media_json TEXT;
+    UPDATE movies SET poster_lookup = 0 WHERE thumbnail_file LIKE '%-poster.jpg';
+    UPDATE movies SET probed_size_bytes = NULL;",
+    // v5: `details_lookup` is 1 once OMDb has answered a lookup that stores its reply (found or
+    // not). Every movie without a stored reply gets one more lookup, including ones v4 skipped
+    // (matched without a usable poster) and ones OMDb missed before.
+    "ALTER TABLE movies ADD COLUMN details_lookup INTEGER NOT NULL DEFAULT 0;
+    UPDATE movies SET details_lookup = 1 WHERE omdb_json IS NOT NULL;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {
@@ -83,6 +95,59 @@ mod tests {
         migrate(&mut conn).unwrap();
         let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0)).unwrap();
         assert_eq!(version, MIGRATIONS.len() as i64);
+    }
+
+    /// A database as an older app version left it.
+    fn migrated_to(version: usize) -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        for sql in &MIGRATIONS[..version] {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", version as i64).unwrap();
+        conn
+    }
+
+    #[test]
+    fn v4_catches_up_matched_posters_and_probes_again() {
+        let mut conn = migrated_to(3);
+        conn.execute_batch(
+            "INSERT INTO movies (id, path, title, size_bytes, modified_at, added_at, probed_size_bytes,
+                                 thumbnail_file, poster_lookup)
+             VALUES (1, '/a.mkv', 'A', 100, 1, 1, 100, '1-poster.jpg', 1),
+                    (2, '/b.mkv', 'B', 100, 1, 1, 100, '2-frame.jpg', 1);",
+        )
+        .unwrap();
+
+        migrate(&mut conn).unwrap();
+        let rows: Vec<(i64, bool, Option<i64>)> = conn
+            .prepare("SELECT id, poster_lookup, probed_size_bytes FROM movies ORDER BY id")
+            .unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(rows, vec![(1, false, None), (2, true, None)]);
+    }
+
+    #[test]
+    fn v5_marks_only_stored_replies_as_looked_up() {
+        let mut conn = migrated_to(4);
+        conn.execute_batch(
+            "INSERT INTO movies (id, path, title, size_bytes, modified_at, added_at, poster_lookup, omdb_json)
+             VALUES (1, '/a.mkv', 'A', 100, 1, 1, 1, '{}'),
+                    (2, '/b.mkv', 'B', 100, 1, 1, 1, NULL);",
+        )
+        .unwrap();
+
+        migrate(&mut conn).unwrap();
+        let looked_up: Vec<bool> = conn
+            .prepare("SELECT details_lookup FROM movies ORDER BY id")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(looked_up, vec![true, false]);
     }
 
     #[test]

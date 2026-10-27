@@ -1,9 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { FilmIcon, PlayIcon, StarIcon } from "lucide-react";
+import { useRef } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
+import { useInView } from "../hooks/use-in-view";
 import { usePlayMovie } from "../hooks/use-play-movie";
 import { useThumbnail } from "../hooks/use-thumbnail";
 import { formatDuration } from "../lib/format-duration";
@@ -12,14 +14,16 @@ import type { Movie } from "../types";
 
 export function MovieCard({ movie, showRating = false }: { movie: Movie; showRating?: boolean }) {
   const playMovie = usePlayMovie();
-  const thumbnail = useThumbnail(movie);
+  const ref = useRef<HTMLElement>(null);
+  // A large library would otherwise request every poster at once when the grid mounts.
+  const thumbnail = useThumbnail(movie, { enabled: useInView(ref) });
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const details = [movie.year, movie.durationMinutes !== undefined && formatDuration(movie.durationMinutes)].filter(
     Boolean,
   );
 
   return (
-    <article className="group/movie flex min-w-0 flex-col gap-2">
+    <article ref={ref} className="group/movie flex min-w-0 flex-col gap-2">
       <AspectRatio ratio={2 / 3} className="overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
         {thumbnail ? (
           <img

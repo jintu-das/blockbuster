@@ -34,6 +34,7 @@ pub fn run() {
             commands::set_library_folder,
             commands::scan_library,
             commands::list_movies,
+            commands::get_movie_details,
             commands::get_thumbnail,
             player::commands::play_movie,
         ])

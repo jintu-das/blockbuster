@@ -6,7 +6,7 @@ use rusqlite::Connection;
 use tauri::ipc::Response;
 use tauri::{AppHandle, Manager};
 
-use super::catalog::{self, MovieDto, ScanSummary};
+use super::catalog::{self, MovieDetailsDto, MovieDto, ScanSummary};
 use super::scanner;
 use crate::{db, media};
 
@@ -92,6 +92,17 @@ pub async fn scan_library(app: AppHandle) -> Result<ScanSummary, String> {
 #[tauri::command]
 pub async fn list_movies(app: AppHandle) -> Result<Vec<MovieDto>, String> {
     blocking(app, |app| with_conn(app, |conn| catalog::list_movies(conn))).await
+}
+
+/// Stored OMDb and stream details for a movie on disk; `None` if it is not in the catalog.
+#[tauri::command]
+pub async fn get_movie_details(app: AppHandle, movie_id: i64) -> Result<Option<MovieDetailsDto>, String> {
+    blocking(app, move |app| {
+        let details = with_conn(app, |conn| catalog::movie_details(conn, movie_id))?;
+        let omdb_enabled = app.state::<media::Enrichment>().has_omdb();
+        Ok(details.map(|details| MovieDetailsDto { omdb_enabled, ..details }))
+    })
+    .await
 }
 
 /// The JPEG bytes of a movie's poster or frame. Looked up by movie, never by path, so the
