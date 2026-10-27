@@ -10,7 +10,7 @@ The frontend only talks to the backend through `invoke()` commands, and the back
 flowchart LR
   subgraph WV["Webview: React 19 + TanStack Query"]
     direction TB
-    R["routes/ (thin)<br/>/ → HomePage<br/>/movies → LibraryPage<br/>/movies/$movieId → MovieDetailsPage"]
+    R["routes/ (thin)<br/>/ → HomePage<br/>/movies → MoviesPage (filters in URL)<br/>/movies/$movieId → MovieDetailsPage"]
     F["features/<br/>layout · home · library · theme"]
     Q[("Query cache<br/>['library', …]<br/>['thumbnail', id, file]")]
     S["useCatalogSync<br/>(in AppLayout)"]

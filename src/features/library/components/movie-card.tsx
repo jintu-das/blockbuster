@@ -24,7 +24,10 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
 
   return (
     <article ref={ref} className="group/movie flex min-w-0 flex-col gap-2">
-      <AspectRatio ratio={2 / 3} className="overflow-hidden rounded-xl bg-muted ring-1 ring-foreground/10">
+      <AspectRatio
+        ratio={2 / 3}
+        className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10 transition-all duration-300 group-hover/movie:-translate-y-1 group-hover/movie:shadow-xl group-hover/movie:ring-primary/60"
+      >
         {thumbnail ? (
           <img
             src={thumbnail}
@@ -57,6 +60,9 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
           </Badge>
         )}
 
+        {/* Darkens the poster on hover so the play button and badges stay readable. */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent opacity-0 transition-opacity duration-300 group-focus-within/movie:opacity-100 group-hover/movie:opacity-100" />
+
         {progress > 0 && (
           <Progress
             value={progress * 100}
@@ -65,20 +71,24 @@ export function MovieCard({ movie, showRating = false }: { movie: Movie; showRat
           />
         )}
 
-        {/* Last child, so it sits above the badges and progress bar and takes every click on the poster. */}
+        {/* The poster opens the details page; the title link below is the keyboard path to it. */}
+        <Link
+          to="/movies/$movieId"
+          params={{ movieId: movie.id }}
+          tabIndex={-1}
+          aria-hidden
+          className="absolute inset-0 rounded-xl"
+        />
+
         <button
           type="button"
           aria-label={progress > 0 ? `Resume ${movie.title}` : `Play ${movie.title}`}
           onClick={() => playMovie.mutate({ id: movie.id })}
           disabled={playMovie.isPending}
-          className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-progress"
+          data-pending={playMovie.isPending || undefined}
+          className="absolute top-1/2 left-1/2 flex size-12 -translate-1/2 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg transition-all duration-300 outline-none group-focus-within/movie:opacity-100 group-hover/movie:opacity-100 hover:scale-110 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-progress data-pending:opacity-100"
         >
-          <span
-            data-pending={playMovie.isPending || undefined}
-            className="flex size-12 items-center justify-center rounded-full bg-background/85 text-foreground opacity-0 shadow-md transition-opacity group-focus-within/movie:opacity-100 group-hover/movie:opacity-100 data-pending:opacity-100"
-          >
-            {playMovie.isPending ? <Spinner /> : <PlayIcon className="fill-current" />}
-          </span>
+          {playMovie.isPending ? <Spinner /> : <PlayIcon className="fill-current" />}
         </button>
       </AspectRatio>
 

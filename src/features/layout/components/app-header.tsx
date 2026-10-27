@@ -1,6 +1,7 @@
-import { BellIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
+import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { BellIcon, RefreshCwIcon, SearchIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,6 +18,18 @@ export function AppHeader() {
   // folder can't be read we still scan, so the backend reports the real problem.
   const hasNoFolder = folderQuery.data === null;
 
+  // The search box drives the Movies page's title filter (`q` in its URL). Typing elsewhere
+  // opens Movies; once there, each keystroke replaces the entry instead of adding history.
+  const navigate = useNavigate();
+  const onMoviesPage = useLocation({ select: (location) => location.pathname.replace(/\/$/, "") === "/movies" });
+  const query = useSearch({ strict: false, select: (search) => ("q" in search ? search.q : undefined) });
+  const search = (q: string) =>
+    navigate({
+      to: "/movies",
+      search: (previous) => ({ ...(onMoviesPage ? previous : {}), q: q || undefined }),
+      replace: onMoviesPage,
+    });
+
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
       <SidebarTrigger />
@@ -26,7 +39,20 @@ export function AppHeader() {
         <InputGroupAddon>
           <SearchIcon />
         </InputGroupAddon>
-        <InputGroupInput type="search" placeholder="Search movies..." aria-label="Search movies" />
+        <InputGroupInput
+          type="search"
+          placeholder="Search movies..."
+          aria-label="Search movies"
+          value={onMoviesPage ? (query ?? "") : ""}
+          onChange={(event) => search(event.target.value)}
+        />
+        {onMoviesPage && query && (
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton size="icon-xs" aria-label="Clear search" onClick={() => search("")}>
+              <XIcon />
+            </InputGroupButton>
+          </InputGroupAddon>
+        )}
       </InputGroup>
 
       <div className="ml-auto flex items-center gap-1">
