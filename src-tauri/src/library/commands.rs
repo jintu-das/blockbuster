@@ -4,7 +4,7 @@ use std::time::SystemTime;
 
 use rusqlite::Connection;
 use tauri::ipc::Response;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use super::catalog::{self, MovieDetailsDto, MovieDto, ScanSummary};
 use super::scanner;
@@ -41,22 +41,41 @@ pub(crate) fn with_conn<T>(app: &AppHandle, work: impl FnOnce(&mut Connection) -
 
 /// Walks `folder` and applies the result in one transaction. With `save_folder`, the folder
 /// setting is written in the same transaction, so it only changes if the scan succeeds.
-/// Afterwards a background pass fills in quality, duration and thumbnails.
+/// A scan that finds nothing where the catalog has movies is refused (see
+/// `catalog::looks_unmounted`). Afterwards a background pass fills in quality, duration and
+/// thumbnails, and `library-updated` tells the UI if anything changed, whoever started the scan.
 /// Callers must hold the `ScanLock`.
 fn scan_into_catalog(app: &AppHandle, folder: &str, save_folder: bool) -> Result<ScanSummary, String> {
     let scan = scanner::scan_folder(Path::new(folder))?;
     let now = scanner::unix_seconds(SystemTime::now());
     let summary = with_conn(app, |conn| {
+        if catalog::looks_unmounted(conn, &scan)? {
+            return Ok(None);
+        }
         let tx = conn.transaction()?;
         if save_folder {
             db::set_setting(&tx, LIBRARY_FOLDER_KEY, folder)?;
         }
         let summary = catalog::apply_scan(&tx, &scan, now)?;
         tx.commit()?;
-        Ok(summary)
-    })?;
+        Ok(Some(summary))
+    })?
+    .ok_or(format!(
+        "{folder} is empty, so the library was left as it was. If it is on a drive, check that the drive is mounted."
+    ))?;
     media::spawn(app);
+    if summary.added + summary.updated + summary.missing > 0 {
+        let _ = app.emit(media::LIBRARY_UPDATED_EVENT, ());
+    }
     Ok(summary)
+}
+
+/// Rescans the saved library folder, holding the `ScanLock` for the whole scan.
+pub(crate) fn rescan_saved_folder(app: &AppHandle) -> Result<ScanSummary, String> {
+    let lock = app.state::<ScanLock>();
+    let _scanning = lock.0.lock().map_err(to_message)?;
+    let folder = with_conn(app, |conn| db::get_setting(conn, LIBRARY_FOLDER_KEY))?.ok_or("Choose a library folder first.")?;
+    scan_into_catalog(app, &folder, false)
 }
 
 #[tauri::command]
@@ -79,14 +98,7 @@ pub async fn set_library_folder(app: AppHandle, path: String) -> Result<ScanSumm
 
 #[tauri::command]
 pub async fn scan_library(app: AppHandle) -> Result<ScanSummary, String> {
-    blocking(app, |app| {
-        let lock = app.state::<ScanLock>();
-        let _scanning = lock.0.lock().map_err(to_message)?;
-        let folder = with_conn(app, |conn| db::get_setting(conn, LIBRARY_FOLDER_KEY))?
-            .ok_or("Choose a library folder first.")?;
-        scan_into_catalog(app, &folder, false)
-    })
-    .await
+    blocking(app, rescan_saved_folder).await
 }
 
 #[tauri::command]

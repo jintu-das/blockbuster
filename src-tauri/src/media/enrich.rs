@@ -11,8 +11,9 @@ use super::poster::{self, Omdb};
 use super::probe::{self, Probe};
 use crate::library::commands::with_conn;
 
-/// Emitted while a pass runs, so the UI can show qualities and thumbnails as they arrive.
-const LIBRARY_UPDATED_EVENT: &str = "library-updated";
+/// Emitted while a pass runs, so the UI can show qualities and thumbnails as they arrive, and
+/// whenever the catalog changes without the UI asking (a startup scan, a file found deleted).
+pub const LIBRARY_UPDATED_EVENT: &str = "library-updated";
 /// Each event makes the UI refetch the whole catalog, so they are spaced out in time rather
 /// than sent per movie.
 const EMIT_INTERVAL: Duration = Duration::from_secs(3);

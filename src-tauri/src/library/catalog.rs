@@ -215,6 +215,23 @@ pub fn movie_for_playback(conn: &Connection, id: i64) -> rusqlite::Result<Option
     .optional()
 }
 
+/// Whether a scan found nothing at all where the catalog still has movies on disk. That is what
+/// an unmounted drive looks like when its mount point stays behind as an empty folder, and
+/// applying the scan would hide the whole library, so callers refuse it instead.
+pub fn looks_unmounted(conn: &Connection, scan: &FolderScan) -> rusqlite::Result<bool> {
+    if !scan.files.is_empty() || !scan.unreadable_paths.is_empty() {
+        return Ok(false);
+    }
+    let mut stmt = conn.prepare("SELECT path FROM movies WHERE missing = 0")?;
+    let paths = stmt.query_map([], |row| row.get::<_, String>(0))?;
+    for path in paths {
+        if Path::new(&path?).starts_with(&scan.root) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 /// Records a playback session: always stamps `last_played_at`, fills in the duration when the
 /// player reported one, and updates the resume position as `progress` says.
 pub fn save_playback(
@@ -340,6 +357,18 @@ mod tests {
 
         apply_scan(&conn, &scan(&[]), 200).unwrap();
         assert_eq!(movie_details(&conn, id).unwrap(), None);
+    }
+
+    #[test]
+    fn empty_scan_of_a_folder_with_movies_looks_unmounted() {
+        let conn = open_in_memory();
+        assert!(!looks_unmounted(&conn, &scan(&[])).unwrap(), "an empty catalog has nothing to lose");
+
+        apply_scan(&conn, &scan(&[file("/m/A.mkv", 10, 1)]), 100).unwrap();
+        assert!(looks_unmounted(&conn, &scan(&[])).unwrap());
+        assert!(!looks_unmounted(&conn, &scan(&[file("/m/B.mkv", 10, 1)])).unwrap());
+        let other = FolderScan { root: "/other".into(), files: Vec::new(), unreadable_paths: Vec::new() };
+        assert!(!looks_unmounted(&conn, &other).unwrap(), "a new, empty folder is fine");
     }
 
     #[test]

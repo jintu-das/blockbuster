@@ -26,6 +26,7 @@ pub fn run() {
             let omdb_api_key = std::env::var("OMDB_API_KEY").ok();
             app.manage(media::Enrichment::new(data_dir.join("thumbnails"), omdb_api_key));
             // Backfill movies scanned before metadata existed, or whose last pass was cut short.
+            // The UI rescans the folder on launch, which queues another pass if anything changed.
             media::spawn(app.handle());
             Ok(())
         })

@@ -55,7 +55,7 @@ flowchart LR
 
 ## Scan, then metadata fill-in
 
-A scan only diffs the folder against the catalog, so it stays fast. Quality, duration and thumbnails are filled in afterwards by a background pass, and the UI updates as results arrive. Thumbnails reach the webview as bytes from `get_thumbnail`, not through `asset://`, which WebKitGTK blocks on the dev server origin.
+A scan runs when the app opens (`useStartupScan`, so files added or deleted while it was closed show up), when the user asks, and when Play finds a file gone. Every scan emits `library-updated` if it changed anything, and a scan that finds no files where the catalog has movies (an unmounted drive's empty mount point) is refused rather than applied. It only diffs the folder against the catalog, so it stays fast. Deleted files are marked `missing`, never removed, so their progress and details return if the file does. Quality, duration and thumbnails are filled in afterwards by a background pass, and the UI updates as results arrive. Thumbnails reach the webview as bytes from `get_thumbnail`, not through `asset://`, which WebKitGTK blocks on the dev server origin.
 
 ```mermaid
 sequenceDiagram
@@ -104,6 +104,11 @@ sequenceDiagram
   U->>UI: Click poster
   UI->>P: invoke("play_movie", {movieId})
   P->>DB: path + saved progress
+  opt file not found on disk
+    P->>DB: rescan_saved_folder (ScanLock, apply_scan)
+    P--)UI: library-updated → card disappears
+    P-->>UI: error: removed, or drive not mounted
+  end
   P->>M: launch --start=#lt;progress#gt;, IPC socket
   P->>S: start tracking
   loop every 10 s

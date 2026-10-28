@@ -4,4 +4,4 @@ mod enrich;
 mod poster;
 mod probe;
 
-pub use enrich::{forget_thumbnail, spawn, Enrichment};
+pub use enrich::{forget_thumbnail, spawn, Enrichment, LIBRARY_UPDATED_EVENT};
