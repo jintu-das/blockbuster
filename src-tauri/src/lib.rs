@@ -2,6 +2,7 @@ mod db;
 mod library;
 mod media;
 mod player;
+mod subtitles;
 
 use std::sync::Mutex;
 
@@ -25,6 +26,9 @@ pub fn run() {
             // Generated thumbnails go next to the catalog. Posters need an OMDb key.
             let omdb_api_key = std::env::var("OMDB_API_KEY").ok();
             app.manage(media::Enrichment::new(data_dir.join("thumbnails"), omdb_api_key));
+            // Added subtitles are copied here; online search needs an OpenSubtitles key.
+            let opensubtitles_api_key = std::env::var("OPENSUBTITLES_API_KEY").ok();
+            app.manage(subtitles::Subtitles::new(data_dir.join("subtitles"), opensubtitles_api_key));
             // Backfill movies scanned before metadata existed, or whose last pass was cut short.
             // The UI rescans the folder on launch, which queues another pass if anything changed.
             media::spawn(app.handle());
@@ -38,6 +42,12 @@ pub fn run() {
             commands::get_movie_details,
             commands::get_thumbnail,
             player::commands::play_movie,
+            subtitles::commands::list_subtitles,
+            subtitles::commands::set_subtitle_choice,
+            subtitles::commands::add_subtitle_file,
+            subtitles::commands::remove_subtitle,
+            subtitles::commands::search_subtitles,
+            subtitles::commands::download_subtitle,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

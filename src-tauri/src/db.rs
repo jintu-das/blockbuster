@@ -4,7 +4,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 /// Schema migrations, applied in order. `PRAGMA user_version` records how many have run,
 /// so only append new entries; never edit one that has shipped.
-const MIGRATIONS: [&str; 5] = [
+const MIGRATIONS: [&str; 6] = [
     // v1: library folder setting and the movie catalog.
     "CREATE TABLE settings (
         key   TEXT PRIMARY KEY,
@@ -45,6 +45,21 @@ const MIGRATIONS: [&str; 5] = [
     // (matched without a usable poster) and ones OMDb missed before.
     "ALTER TABLE movies ADD COLUMN details_lookup INTEGER NOT NULL DEFAULT 0;
     UPDATE movies SET details_lookup = 1 WHERE omdb_json IS NOT NULL;",
+    // v6: subtitles the user added (from a file or OpenSubtitles), copied to
+    // `<app data>/subtitles/<file>`, and the subtitle chosen for each movie (see
+    // `subtitles::store::Choice`; NULL lets mpv decide).
+    "CREATE TABLE subtitles (
+        id        INTEGER PRIMARY KEY,
+        movie_id  INTEGER NOT NULL,
+        file      TEXT NOT NULL,
+        label     TEXT NOT NULL,
+        language  TEXT,
+        source    TEXT NOT NULL,
+        source_id TEXT,
+        added_at  INTEGER NOT NULL
+    );
+    CREATE INDEX subtitles_movie ON subtitles (movie_id);
+    ALTER TABLE movies ADD COLUMN subtitle_choice TEXT;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {
@@ -148,6 +163,21 @@ mod tests {
             .collect::<rusqlite::Result<_>>()
             .unwrap();
         assert_eq!(looked_up, vec![true, false]);
+    }
+
+    #[test]
+    fn v6_adds_subtitles_without_choosing_any() {
+        let mut conn = migrated_to(5);
+        conn.execute_batch(
+            "INSERT INTO movies (id, path, title, size_bytes, modified_at, added_at) VALUES (1, '/a.mkv', 'A', 100, 1, 1);",
+        )
+        .unwrap();
+
+        migrate(&mut conn).unwrap();
+        let choice: Option<String> =
+            conn.query_row("SELECT subtitle_choice FROM movies WHERE id = 1", [], |row| row.get(0)).unwrap();
+        let added: i64 = conn.query_row("SELECT COUNT(*) FROM subtitles", [], |row| row.get(0)).unwrap();
+        assert_eq!((choice, added), (None, 0));
     }
 
     #[test]

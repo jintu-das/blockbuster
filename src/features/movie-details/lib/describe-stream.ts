@@ -1,3 +1,5 @@
+import { languageLabel } from "@/features/library";
+import type { EmbeddedSubtitle } from "@/features/subtitles";
 import type { MediaStream } from "../types";
 
 const codecNames: Record<string, string> = {
@@ -26,8 +28,6 @@ const codecNames: Record<string, string> = {
   webvtt: "WebVTT",
 };
 
-const languageNames = new Intl.DisplayNames(undefined, { type: "language" });
-
 /** "HEVC" for "hevc"; unknown codecs in upper case. */
 function codecName(codec: string) {
   return codecNames[codec] ?? codec.toUpperCase();
@@ -45,15 +45,6 @@ function channelLabel(stream: MediaStream) {
   if (layout === "stereo") return "Stereo";
   if (layout === "mono") return "Mono";
   return layout ?? (stream.channels !== null ? `${stream.channels} ch` : undefined);
-}
-
-/** "English" for "eng"; the raw code when the runtime has no name for it. */
-export function languageLabel(code: string) {
-  try {
-    return languageNames.of(code) ?? code;
-  } catch {
-    return code;
-  }
 }
 
 /** One line of technical detail, e.g. "3840x1600 @ 23.976 fps • HDR" or "7.1 • 48 kHz • 640 kb/s". */
@@ -87,4 +78,16 @@ export function audioLabel(streams: MediaStream[]) {
 
 export function formatBitrate(kbps: number) {
   return kbps >= 1000 ? `${(kbps / 1000).toFixed(1)} Mbps` : `${kbps} kb/s`;
+}
+
+/** The video's subtitle streams, numbered as mpv numbers them, for the subtitles card. */
+export function embeddedSubtitles(streams: MediaStream[]): EmbeddedSubtitle[] {
+  return streams
+    .filter((stream) => stream.kind === "subtitle")
+    .map((stream, position) => ({
+      index: position + 1,
+      label: stream.language ? languageLabel(stream.language) : (stream.title ?? `Track ${position + 1}`),
+      detail: [codecLabel(stream), stream.language && stream.title].filter(Boolean).join(" • "),
+      isDefault: stream.default,
+    }));
 }

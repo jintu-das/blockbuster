@@ -19,4 +19,5 @@ export { errorMessage } from "./lib/error-message";
 export { formatDuration } from "./lib/format-duration";
 export { formatFileSize } from "./lib/format-file-size";
 export { formatMovieCount } from "./lib/format-movie-count";
+export { languageLabel } from "./lib/language-label";
 export type { Movie, ScanSummary } from "./types";

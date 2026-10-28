@@ -18,6 +18,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 | Movie details page: OMDb plot, credits and ratings, plus streams from ffprobe, stored for offline use | Done |
 | Play in mpv, save position, resume on next play | Done (Linux/Unix only) |
 | Keep progress for files that go missing and come back | Done |
+| Subtitles: list embedded and sidecar ones, add from a file or OpenSubtitles, remember the choice per movie | Done |
 | Search the catalog | Not started |
 | Scan progress display | Not started |
 | Real disk usage in the sidebar | Mock data |
@@ -49,6 +50,15 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 
    Without a key, every movie gets a frame from the video instead of a poster. OMDb is used because TMDB is not reachable from India.
 
+4. Optional: search subtitles online. Create a free account and an API consumer at [opensubtitles.com/consumers](https://www.opensubtitles.com/consumers), then:
+
+   ```bash
+   echo 'export OPENSUBTITLES_API_KEY=your_key' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+   Without a key, subtitles still work from files. Downloads without a login are limited to a few a day.
+
 ## Running
 
 | Command | What it does |
@@ -65,6 +75,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 2. A background pass reads each movie's quality, duration and streams, then fetches its OMDb details and poster or grabs a frame. Cards and details pages fill in as it goes, and everything is stored, so details work offline.
 3. Click a movie to play it in mpv. The position is saved every 10 seconds and when mpv closes.
 4. Play it again to resume. Movies watched past 95% start over.
+5. On a movie's page, pick the subtitle it starts with: one inside the video, a file named after it in the same folder (`Movie.en.srt`), or one you add from disk or OpenSubtitles.
 
 Rescan after adding or removing files. Changed files are detected by size; movies that disappear are hidden, not deleted, so their progress returns with them.
 
@@ -72,6 +83,7 @@ Everything Blockbuster generates lives in its app data directory, `~/.local/shar
 
 - `blockbuster.db`: the catalog, settings and playback progress (SQLite)
 - `thumbnails/`: posters and frames
+- `subtitles/`: subtitles you added (copies; your files are never moved or changed)
 
 To inspect the catalog:
 

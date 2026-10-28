@@ -31,7 +31,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
     entry.file_name().to_str().is_some_and(|name| name.starts_with('.'))
 }
 
-fn is_video(path: &Path) -> bool {
+pub(crate) fn is_video(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
         .is_some_and(|ext| VIDEO_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))

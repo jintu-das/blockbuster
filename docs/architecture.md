@@ -1,6 +1,6 @@
 # Architecture
 
-Blockbuster is a Tauri 2 desktop app. A React frontend in the webview calls a Rust backend over Tauri IPC. The backend owns all state in one SQLite file and drives three external tools: mpv for playback, ffprobe/ffmpeg for metadata and frames, and the OMDb web API for posters and movie details (stored, so the details page works offline). Module-level detail lives in [CLAUDE.md](../CLAUDE.md).
+Blockbuster is a Tauri 2 desktop app. A React frontend in the webview calls a Rust backend over Tauri IPC. The backend owns all state in one SQLite file and drives three external tools: mpv for playback, ffprobe/ffmpeg for metadata and frames, the OMDb web API for posters and movie details (stored, so the details page works offline), and the OpenSubtitles API for subtitles the user searches for. Module-level detail lives in [CLAUDE.md](../CLAUDE.md).
 
 ## Components
 
@@ -11,21 +11,24 @@ flowchart LR
   subgraph WV["Webview: React 19 + TanStack Query"]
     direction TB
     R["routes/ (thin)<br/>/ → HomePage<br/>/movies → MoviesPage (filters in URL)<br/>/movies/$movieId → MovieDetailsPage"]
-    F["features/<br/>layout · home · library · theme"]
-    Q[("Query cache<br/>['library', …]<br/>['thumbnail', id, file]")]
+    F["features/<br/>layout · home · movies · movie-details<br/>subtitles · library · theme"]
+    Q[("Query cache<br/>['library', …]<br/>['thumbnail', id, file]<br/>['subtitles', id, …]")]
     S["useCatalogSync<br/>(in AppLayout)"]
     R --> F --> Q
   end
 
   subgraph RS["Rust backend: blockbuster_lib"]
     direction TB
-    CMD["Commands (all via blocking())<br/>get/set_library_folder · scan_library<br/>list_movies · get_movie_details · get_thumbnail · play_movie"]
+    CMD["Commands (all via blocking())<br/>get/set_library_folder · scan_library<br/>list_movies · get_movie_details · get_thumbnail · play_movie<br/>list/add/remove/search/download_subtitle(s) · set_subtitle_choice"]
     LIB["library/<br/>scanner · title · catalog"]
     PLY["player/<br/>mpv · session"]
     MED["media/<br/>enrich (PassGate) · probe · poster"]
-    DB[("db.rs<br/>Mutex#lt;Connection#gt;<br/>migrations v1–v3")]
+    SUB["subtitles/<br/>sidecar · store · opensubtitles"]
+    DB[("db.rs<br/>Mutex#lt;Connection#gt;<br/>migrations v1–v6")]
     CMD --> LIB --> DB
     CMD --> PLY
+    CMD --> SUB --> DB
+    PLY -- "subtitle plan" --> SUB
     LIB -- "after scan: spawn" --> MED
     MED -- "short writes" --> DB
     PLY -- "save progress / 10 s" --> DB
@@ -36,7 +39,8 @@ flowchart LR
     MPV["mpv"]
     FF["ffprobe / ffmpeg"]
     OMDB["omdbapi.com<br/>(OMDB_API_KEY)"]
-    DATA[("App data dir<br/>blockbuster.db<br/>thumbnails/*.jpg")]
+    OSUB["opensubtitles.com<br/>(OPENSUBTITLES_API_KEY)"]
+    DATA[("App data dir<br/>blockbuster.db<br/>thumbnails/*.jpg<br/>subtitles/*")]
   end
 
   F -- "invoke()" --> CMD
@@ -51,6 +55,9 @@ flowchart LR
   MED -- "HTTPS lookup + download" --> OMDB
   DB --- DATA
   MED -- "write JPEG" --> DATA
+  SUB -- "sidecars (read)" --> FS
+  SUB -- "HTTPS search + download" --> OSUB
+  SUB -- "write copies" --> DATA
 ```
 
 ## Scan, then metadata fill-in
@@ -109,8 +116,14 @@ sequenceDiagram
     P--)UI: library-updated → card disappears
     P-->>UI: error: removed, or drive not mounted
   end
-  P->>M: launch --start=#lt;progress#gt;, IPC socket
+  P->>DB: subtitle plan (choice, added files) + sidecars on disk
+  P->>M: launch --start=#lt;progress#gt;, --sub-file per sidecar, --sid=no if Off, IPC socket
   P->>S: start tracking
+  opt added subtitles, or an embedded / sidecar choice
+    M--)S: track-list (file loaded)
+    S->>M: sub-add #lt;added#gt; auto / select
+    S->>M: set_property sid #lt;real track id#gt;
+  end
   loop every 10 s
     M--)S: time-pos, duration
     S->>DB: save_playback

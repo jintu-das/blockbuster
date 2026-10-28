@@ -3,4 +3,4 @@ pub mod commands;
 mod scanner;
 mod title;
 
-pub(crate) use scanner::unix_seconds;
+pub(crate) use scanner::{is_video, unix_seconds};

@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::io::{self, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
@@ -5,7 +6,10 @@ use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use serde::Deserialize;
 use serde_json::{json, Value};
+
+use crate::subtitles::store::{Selection, SubtitlePlan};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -16,6 +20,23 @@ pub enum MpvEvent {
     Duration(f64),
     /// Playback of the file stopped; `eof` is true when it played to the end.
     EndFile { eof: bool },
+    /// The file's tracks, sent when it loads and whenever they change.
+    Tracks(Vec<Track>),
+}
+
+/// One entry of mpv's `track-list`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct Track {
+    pub id: i64,
+    /// "video", "audio" or "sub".
+    #[serde(rename = "type")]
+    pub kind: String,
+    /// Loaded from a separate file rather than the video.
+    #[serde(default)]
+    pub external: bool,
+    /// The path an external track was loaded from.
+    #[serde(rename = "external-filename")]
+    pub external_filename: Option<String>,
 }
 
 /// Parses one line of mpv IPC output. Command replies, other events and property changes
@@ -23,14 +44,12 @@ pub enum MpvEvent {
 pub fn parse_event(line: &str) -> Option<MpvEvent> {
     let value: Value = serde_json::from_str(line).ok()?;
     match value.get("event")?.as_str()? {
-        "property-change" => {
-            let data = value.get("data")?.as_f64()?;
-            match value.get("name")?.as_str()? {
-                "time-pos" => Some(MpvEvent::TimePos(data)),
-                "duration" => Some(MpvEvent::Duration(data)),
-                _ => None,
-            }
-        }
+        "property-change" => match value.get("name")?.as_str()? {
+            "time-pos" => Some(MpvEvent::TimePos(value.get("data")?.as_f64()?)),
+            "duration" => Some(MpvEvent::Duration(value.get("data")?.as_f64()?)),
+            "track-list" => Some(MpvEvent::Tracks(Vec::<Track>::deserialize(value.get("data")?).ok()?)),
+            _ => None,
+        },
         "end-file" => Some(MpvEvent::EndFile { eof: value.get("reason").and_then(Value::as_str) == Some("eof") }),
         _ => None,
     }
@@ -71,11 +90,38 @@ pub fn send(stream: &mut UnixStream, command: Value) -> io::Result<()> {
     stream.write_all(line.as_bytes())
 }
 
-/// Starts mpv on `file` and connects to its IPC socket, observing `time-pos` and `duration`.
+/// mpv flags for `subtitles`: sidecars are loaded with `--sub-file` (so they are there even if
+/// the user's mpv config doesn't auto-load them; mpv skips auto-loading files already loaded),
+/// and Off is `--sid=no`. Everything else waits for `track-list` (see `session::SubtitleSetup`),
+/// so no track number is guessed and Automatic keeps mpv's own pick.
+fn subtitle_args(subtitles: &SubtitlePlan) -> Vec<OsString> {
+    let mut args: Vec<OsString> = subtitles
+        .sidecars
+        .iter()
+        .map(|path| {
+            let mut arg = OsString::from("--sub-file=");
+            arg.push(path);
+            arg
+        })
+        .collect();
+    if subtitles.select == Selection::Off {
+        args.push("--sid=no".into());
+    }
+    args
+}
+
+/// Starts mpv on `file` and connects to its IPC socket, observing `time-pos`, `duration` and
+/// (when subtitles still need setting up once the file loads) `track-list`.
 ///
 /// The flags override user config that would break tracking: `keep-open`/`idle` would keep
 /// mpv running after the movie ends, and mpv's own resume would fight Blockbuster's.
-pub fn launch(file: &Path, start_seconds: Option<i64>, title: &str, extra_args: &[&str]) -> Result<MpvProcess, String> {
+pub fn launch(
+    file: &Path,
+    start_seconds: Option<i64>,
+    title: &str,
+    subtitles: &SubtitlePlan,
+    extra_args: &[&str],
+) -> Result<MpvProcess, String> {
     let socket_path = socket_path();
     let mut command = Command::new("mpv");
     command
@@ -83,6 +129,7 @@ pub fn launch(file: &Path, start_seconds: Option<i64>, title: &str, extra_args: 
         .args(["--force-window=immediate", "--keep-open=no", "--idle=no"])
         .args(["--save-position-on-quit=no", "--resume-playback=no"])
         .arg(format!("--title={title}"))
+        .args(subtitle_args(subtitles))
         .args(extra_args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -117,7 +164,11 @@ pub fn launch(file: &Path, start_seconds: Option<i64>, title: &str, extra_args: 
 
     let mut control = stream.try_clone().map_err(|error| error.to_string())?;
     let observe = send(&mut control, json!(["observe_property", 1, "time-pos"]))
-        .and_then(|()| send(&mut control, json!(["observe_property", 2, "duration"])));
+        .and_then(|()| send(&mut control, json!(["observe_property", 2, "duration"])))
+        .and_then(|()| match subtitles.needs_tracks() {
+            true => send(&mut control, json!(["observe_property", 3, "track-list"])),
+            false => Ok(()),
+        });
     if let Err(error) = observe {
         let _ = child.kill();
         return Err(format!("Couldn't talk to mpv: {error}"));
@@ -157,6 +208,31 @@ mod tests {
         assert_eq!(parse_event(r#"{"event":"video-reconfig"}"#), None);
         assert_eq!(parse_event(r#"{"event":"property-change","id":1,"name":"time-pos"}"#), None);
         assert_eq!(parse_event("not json"), None);
+    }
+
+    #[test]
+    fn parses_track_lists() {
+        let line = r#"{"event":"property-change","id":3,"name":"track-list","data":[
+            {"id":1,"type":"video","src-id":0,"external":false},
+            {"id":1,"type":"sub","src-id":2,"external":false,"lang":"eng"},
+            {"id":2,"type":"sub","src-id":0,"external":true,"external-filename":"/m/A.en.srt"}]}"#;
+        assert_eq!(
+            parse_event(line),
+            Some(MpvEvent::Tracks(vec![
+                Track { id: 1, kind: "video".into(), external: false, external_filename: None },
+                Track { id: 1, kind: "sub".into(), external: false, external_filename: None },
+                Track { id: 2, kind: "sub".into(), external: true, external_filename: Some("/m/A.en.srt".into()) },
+            ]))
+        );
+    }
+
+    #[test]
+    fn subtitle_args_load_sidecars_and_only_force_off() {
+        let plan = |select| SubtitlePlan { sidecars: vec!["/m/A.en.srt".into()], added: vec!["/d/1.srt".into()], select };
+        let args = |select| subtitle_args(&plan(select)).into_iter().map(|arg| arg.into_string().unwrap()).collect::<Vec<_>>();
+        assert_eq!(args(Selection::Auto), ["--sub-file=/m/A.en.srt"], "added files come later, over IPC");
+        assert_eq!(args(Selection::Embedded(5)), ["--sub-file=/m/A.en.srt"], "no guessed track number");
+        assert_eq!(args(Selection::Off), ["--sub-file=/m/A.en.srt", "--sid=no"]);
     }
 
     #[test]

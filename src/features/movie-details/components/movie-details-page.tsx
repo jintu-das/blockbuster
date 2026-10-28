@@ -6,8 +6,10 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
 import { errorMessage, LibraryLoadError, useLibraryMovies } from "@/features/library";
+import { SubtitlesCard } from "@/features/subtitles";
 import type { OmdbStatus } from "../api/movie-details-api";
 import { useMovieDetails } from "../hooks/use-movie-details";
+import { embeddedSubtitles } from "../lib/describe-stream";
 import type { MovieDetails } from "../types";
 import { MediaInspector } from "./media-inspector";
 import { MovieCast } from "./movie-cast";
@@ -69,8 +71,9 @@ export function MovieDetailsPage({ movieId }: { movieId: string }) {
           {omdb && <MovieSynopsis omdb={omdb} />}
           {omdb && omdb.actors.length > 0 && <MovieCast actors={omdb.actors} />}
         </div>
-        <div className="lg:col-span-4">
+        <div className="flex flex-col gap-6 lg:col-span-4">
           <MediaInspector movie={movie} />
+          <SubtitlesCard movieId={movie.id} embedded={movie.media && embeddedSubtitles(movie.media.streams)} />
         </div>
       </div>
     </div>

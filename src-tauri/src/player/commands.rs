@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 use super::{mpv, session};
 use crate::library::catalog;
 use crate::library::commands::{blocking, rescan_saved_folder, with_conn};
+use crate::subtitles::{find_sidecars, store as subtitles, Subtitles};
 
 /// The movie currently playing, if any. Only one plays at a time.
 #[derive(Default)]
@@ -43,8 +44,12 @@ pub async fn play_movie(app: AppHandle, movie_id: i64, from_start: bool) -> Resu
         }
 
         let start = if from_start { None } else { target.progress_seconds };
-        let process = mpv::launch(Path::new(&target.path), start, &target.title, &[])?;
-        *active = Some(session::start(app.clone(), movie_id, process)?);
+        let video = Path::new(&target.path);
+        let subtitle_dir = app.state::<Subtitles>().dir.clone();
+        let sidecars = find_sidecars(video);
+        let plan = with_conn(app, |conn| subtitles::playback_plan(conn, movie_id, video, &sidecars, &subtitle_dir))?;
+        let process = mpv::launch(video, start, &target.title, &plan, &[])?;
+        *active = Some(session::start(app.clone(), movie_id, process, plan)?);
         Ok(())
     })
     .await
