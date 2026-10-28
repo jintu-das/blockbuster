@@ -38,6 +38,9 @@ export function parseMovieFilters(search: Record<string, unknown>): MovieFilters
   const quality = Array.isArray(search.quality)
     ? search.quality.filter((value): value is Resolution => oneOf(value, RESOLUTIONS) !== undefined)
     : [];
+  const genre = Array.isArray(search.genre)
+    ? search.genre.filter((value): value is string => typeof value === "string")
+    : [];
   const decade = Number(search.decade);
   return cleanFilters({
     q: typeof search.q === "string" ? search.q : undefined,
@@ -45,6 +48,7 @@ export function parseMovieFilters(search: Record<string, unknown>): MovieFilters
     quality,
     hdr: search.hdr === true || undefined,
     decade: Number.isInteger(decade) && decade % 10 === 0 ? decade : undefined,
+    genre,
     sort: oneOf(search.sort, SORT_OPTIONS.map((option) => option.value)),
     group: oneOf(search.group, ["letter", "decade", "quality", "status", "folder"]),
     view: oneOf(search.view, ["grid", "list"]),
@@ -59,6 +63,7 @@ export function cleanFilters(filters: MovieFilters): MovieFilters {
     quality: filters.quality?.length ? filters.quality : undefined,
     hdr: filters.hdr || undefined,
     decade: filters.decade,
+    genre: filters.genre?.length ? filters.genre : undefined,
     sort: filters.sort === DEFAULT_SORT ? undefined : filters.sort,
     group: filters.group,
     view: filters.view === "list" ? "list" : undefined,
@@ -72,5 +77,5 @@ export function clearNarrowing({ sort, group, view }: MovieFilters): MovieFilter
 
 /** Whether any filter (not counting sort, grouping or view) narrows the list. */
 export function hasActiveFilters(filters: MovieFilters) {
-  return Boolean(filters.q?.trim() || filters.status || filters.quality?.length || filters.hdr || filters.decade);
+  return Boolean(filters.q?.trim() || filters.status || filters.quality?.length || filters.hdr || filters.decade || filters.genre?.length);
 }

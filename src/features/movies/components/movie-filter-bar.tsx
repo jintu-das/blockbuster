@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { placeholderGenres } from "../data/placeholder-genres";
 import { clearNarrowing, DEFAULT_SORT, GROUP_OPTIONS, RESOLUTIONS, SORT_OPTIONS, STATUS_OPTIONS } from "../lib/movie-filters";
 import type { MovieFilters, Resolution } from "../types";
 
@@ -22,6 +21,8 @@ type FilterBarProps = {
   onChange: (filters: MovieFilters) => void;
   /** Decades that have at least one movie, newest first. */
   decades: number[];
+  /** Genres that have at least one movie, A–Z, with how many movies each has. */
+  genres: { name: string; count: number }[];
 };
 
 function FilterTrigger({ label, count }: { label: string; count?: number }) {
@@ -36,12 +37,16 @@ function FilterTrigger({ label, count }: { label: string; count?: number }) {
   );
 }
 
-export function MovieFilterBar({ filters, onChange, decades }: FilterBarProps) {
+export function MovieFilterBar({ filters, onChange, decades, genres }: FilterBarProps) {
   const update = (patch: Partial<MovieFilters>) => onChange({ ...filters, ...patch });
   const qualityCount = (filters.quality?.length ?? 0) + (filters.hdr ? 1 : 0);
   const toggleResolution = (resolution: Resolution, checked: boolean) => {
     const quality = filters.quality ?? [];
     update({ quality: checked ? [...quality, resolution] : quality.filter((value) => value !== resolution) });
+  };
+  const toggleGenre = (genre: string, checked: boolean) => {
+    const selected = filters.genre ?? [];
+    update({ genre: checked ? [...selected, genre] : selected.filter((value) => value !== genre) });
   };
 
   return (
@@ -114,18 +119,26 @@ export function MovieFilterBar({ filters, onChange, decades }: FilterBarProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-          <FilterTrigger label="Genre" />
+          <FilterTrigger label="Genre" count={filters.genre?.length} />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent align="start" className="max-h-80 w-56">
           <DropdownMenuGroup>
-            <DropdownMenuLabel className="text-xs font-normal">
-              Coming soon: genres need to be added to the catalog first.
-            </DropdownMenuLabel>
-            {placeholderGenres.map((genre) => (
-              <DropdownMenuCheckboxItem key={genre} checked={false} disabled>
-                {genre}
-              </DropdownMenuCheckboxItem>
-            ))}
+            {genres.length === 0 ? (
+              <DropdownMenuLabel className="text-xs font-normal">
+                No genres yet: they come from OMDb, which needs an API key.
+              </DropdownMenuLabel>
+            ) : (
+              genres.map(({ name, count }) => (
+                <DropdownMenuCheckboxItem
+                  key={name}
+                  checked={filters.genre?.includes(name) ?? false}
+                  onCheckedChange={(checked) => toggleGenre(name, checked)}
+                >
+                  {name}
+                  <span className="ml-auto font-mono text-xs text-muted-foreground">{count}</span>
+                </DropdownMenuCheckboxItem>
+              ))
+            )}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -202,7 +215,7 @@ export function MovieFilterBar({ filters, onChange, decades }: FilterBarProps) {
 }
 
 /** One removable chip per active filter, plus "Clear all". */
-export function ActiveFilterChips({ filters, onChange }: Omit<FilterBarProps, "decades">) {
+export function ActiveFilterChips({ filters, onChange }: Omit<FilterBarProps, "decades" | "genres">) {
   const chips: { label: string; clear: Partial<MovieFilters> }[] = [];
   const query = filters.q?.trim();
   if (query) chips.push({ label: `“${query}”`, clear: { q: undefined } });
@@ -213,6 +226,9 @@ export function ActiveFilterChips({ filters, onChange }: Omit<FilterBarProps, "d
   }
   if (filters.hdr) chips.push({ label: "HDR", clear: { hdr: undefined } });
   if (filters.decade !== undefined) chips.push({ label: `${filters.decade}s`, clear: { decade: undefined } });
+  for (const genre of filters.genre ?? []) {
+    chips.push({ label: genre, clear: { genre: filters.genre?.filter((value) => value !== genre) } });
+  }
 
   if (chips.length === 0) return null;
 

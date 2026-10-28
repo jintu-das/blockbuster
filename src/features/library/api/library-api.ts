@@ -16,6 +16,8 @@ type MovieDto = {
   quality: string | null;
   /** File name of the generated poster or frame; load it with `get_thumbnail`. */
   thumbnailFile: string | null;
+  /** OMDb's comma-separated genres, e.g. "Action, Sci-Fi"; "N/A" or null when unknown. */
+  genre: string | null;
 };
 
 function toIso(unixSeconds: number) {
@@ -37,6 +39,7 @@ function toMovie(dto: MovieDto): Movie {
     progressSeconds: progressSeconds ?? undefined,
     quality: dto.quality ?? undefined,
     thumbnailFile: dto.thumbnailFile ?? undefined,
+    genres: dto.genre && dto.genre !== "N/A" ? dto.genre.split(", ") : [],
   };
 }
 

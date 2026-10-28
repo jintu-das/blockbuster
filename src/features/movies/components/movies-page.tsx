@@ -52,6 +52,11 @@ export function MoviesPage({
       ),
     [movies],
   );
+  const genres = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const genre of movies.flatMap((movie) => movie.genres)) counts.set(genre, (counts.get(genre) ?? 0) + 1);
+    return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([name, count]) => ({ name, count }));
+  }, [movies]);
   const totalBytes = useMemo(() => results.reduce((sum, movie) => sum + movie.sizeBytes, 0), [results]);
 
   if (error) return <LibraryLoadError error={error} onRetry={refetch} />;
@@ -88,7 +93,7 @@ export function MoviesPage({
             Change folder
           </Button>
         </div>
-        <MovieFilterBar filters={filters} onChange={setFilters} decades={decades} />
+        <MovieFilterBar filters={filters} onChange={setFilters} decades={decades} genres={genres} />
         <ActiveFilterChips filters={filters} onChange={setFilters} />
       </div>
 

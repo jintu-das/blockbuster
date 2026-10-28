@@ -47,6 +47,8 @@ pub struct MovieDto {
     /// File name of the poster or frame image, once one has been made. The webview loads it
     /// through `get_thumbnail`, since WebKitGTK blocks `asset://` images from the dev server.
     pub thumbnail_file: Option<String>,
+    /// OMDb's comma-separated genre list (e.g. "Action, Sci-Fi"), read from the stored reply.
+    pub genre: Option<String>,
 }
 
 struct KnownFile {
@@ -139,7 +141,8 @@ pub fn apply_scan(conn: &Connection, scan: &FolderScan, now: i64) -> rusqlite::R
 pub fn list_movies(conn: &Connection) -> rusqlite::Result<Vec<MovieDto>> {
     let mut stmt = conn.prepare(
         "SELECT id, path, title, year, size_bytes, modified_at, added_at,
-                duration_seconds, progress_seconds, last_played_at, quality, thumbnail_file
+                duration_seconds, progress_seconds, last_played_at, quality, thumbnail_file,
+                CASE WHEN json_valid(omdb_json) THEN json_extract(omdb_json, '$.Genre') END
          FROM movies WHERE missing = 0 ORDER BY title COLLATE NOCASE",
     )?;
     let rows = stmt.query_map([], |row| {
@@ -156,6 +159,7 @@ pub fn list_movies(conn: &Connection) -> rusqlite::Result<Vec<MovieDto>> {
             last_played_at: row.get(9)?,
             quality: row.get(10)?,
             thumbnail_file: row.get(11)?,
+            genre: row.get(12)?,
         })
     })?;
     rows.collect()
@@ -256,6 +260,18 @@ mod tests {
 
     fn movie(conn: &Connection, title: &str) -> MovieDto {
         list_movies(conn).unwrap().into_iter().find(|movie| movie.title == title).unwrap()
+    }
+
+    #[test]
+    fn list_reads_genre_from_stored_reply() {
+        let conn = open_in_memory();
+        apply_scan(&conn, &scan(&[file("/m/A.mkv", 10, 1), file("/m/B.mkv", 10, 1), file("/m/C.mkv", 10, 1)]), 100)
+            .unwrap();
+        conn.execute("UPDATE movies SET omdb_json = '{\"Genre\":\"Action, Sci-Fi\"}' WHERE title = 'A'", []).unwrap();
+        conn.execute("UPDATE movies SET omdb_json = 'not json' WHERE title = 'B'", []).unwrap();
+
+        assert_eq!(movie(&conn, "A").genre.as_deref(), Some("Action, Sci-Fi"));
+        assert_eq!((movie(&conn, "B").genre, movie(&conn, "C").genre), (None, None));
     }
 
     #[test]

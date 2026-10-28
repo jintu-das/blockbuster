@@ -33,6 +33,7 @@ function matches(movie: Movie, filters: MovieFilters, query: string) {
   if (filters.decade !== undefined && (movie.year === undefined || decadeOf(movie.year) !== filters.decade)) {
     return false;
   }
+  if (filters.genre?.length && !movie.genres.some((genre) => filters.genre?.includes(genre))) return false;
   return true;
 }
 

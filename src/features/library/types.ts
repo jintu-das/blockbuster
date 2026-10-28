@@ -13,6 +13,8 @@ export type Movie = {
   progressSeconds?: number;
   /** File name of the generated poster (OMDb) or video frame; load it with `useThumbnail`. */
   thumbnailFile?: string;
+  /** Genres from the stored OMDb reply; empty until OMDb has answered. */
+  genres: string[];
   /** Absolute path of the video file on disk. */
   filePath: string;
   /** ISO timestamp of when the scan first found the file. */

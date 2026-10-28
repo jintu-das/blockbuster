@@ -18,6 +18,8 @@ export type MovieFilters = {
   hdr?: boolean;
   /** First year of a decade, e.g. 1990. */
   decade?: number;
+  /** Matches movies in any of these genres. */
+  genre?: string[];
   sort?: SortKey;
   /** Unset shows one flat list. */
   group?: GroupKey;
