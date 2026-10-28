@@ -6,7 +6,7 @@ import {
   useLibraryMovies,
   type Movie,
 } from "@/features/library";
-import { decadeOf, resolutionOf, sortMovies, watchStatusOf, type WatchStatus } from "@/features/movies";
+import { decadeOf, MOVIE_VIEWS, resolutionOf, sortMovies, watchStatusOf, type WatchStatus } from "@/features/movies";
 import { seededOrder } from "../lib/seeded-order";
 import { HomeBillboard, type BillboardItem } from "./home-billboard";
 import { LibraryStats } from "./library-stats";
@@ -76,23 +76,23 @@ export function HomePage() {
         title="Continue watching"
         description="More in progress"
         movies={home.inProgress}
-        viewAll={{ to: "/movies", search: { status: "in-progress", sort: "played" } }}
+        viewAll={{ to: "/movies", search: MOVIE_VIEWS.continueWatching }}
       />
       <MovieShelf
         title="Recently added"
         movies={home.recentlyAdded}
-        viewAll={{ to: "/movies", search: { sort: "added" } }}
+        viewAll={{ to: "/movies", search: MOVIE_VIEWS.recentlyAdded }}
       />
       <MovieShelf
         title="Something new to watch"
         description="Not played yet"
         movies={home.unwatched}
-        viewAll={{ to: "/movies", search: { status: "unwatched" } }}
+        viewAll={{ to: "/movies", search: MOVIE_VIEWS.unwatched }}
       />
       <MovieShelf
         title="In 4K"
         movies={home.fourK}
-        viewAll={{ to: "/movies", search: { quality: ["4K"] } }}
+        viewAll={{ to: "/movies", search: MOVIE_VIEWS.fourK }}
       />
       {home.topDecade !== undefined && (
         <MovieShelf
@@ -105,7 +105,7 @@ export function HomePage() {
         title="Watch again"
         description="Played longest ago"
         movies={home.watchAgain}
-        viewAll={{ to: "/movies", search: { status: "watched", sort: "played-oldest" } }}
+        viewAll={{ to: "/movies", search: MOVIE_VIEWS.watchAgain }}
       />
 
       <LibraryStats movies={movies} />

@@ -20,6 +20,15 @@ export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 export const DEFAULT_SORT: SortKey = "title";
 
+/** Preset Movies views shared by the Home shelves' "View all" links and the sidebar quick views. */
+export const MOVIE_VIEWS = {
+  continueWatching: { status: "in-progress", sort: "played" },
+  recentlyAdded: { sort: "added" },
+  unwatched: { status: "unwatched" },
+  fourK: { quality: ["4K"] },
+  watchAgain: { status: "watched", sort: "played-oldest" },
+} satisfies Record<string, MovieFilters>;
+
 export const GROUP_OPTIONS: { value: GroupKey | undefined; label: string }[] = [
   { value: undefined, label: "No grouping" },
   { value: "letter", label: "Title A–Z" },
@@ -73,6 +82,15 @@ export function cleanFilters(filters: MovieFilters): MovieFilters {
 /** Keeps how the list is arranged (sort, grouping, view) and drops what narrows it. */
 export function clearNarrowing({ sort, group, view }: MovieFilters): MovieFilters {
   return { sort, group, view };
+}
+
+/**
+ * The filters that narrow the list as a comparable key: sort, grouping, view and unknown search
+ * params are left out, and multi-select values are sorted, so the same filter set always matches.
+ */
+export function narrowingKey(filters: MovieFilters) {
+  const { q, status, quality, hdr, decade, genre } = cleanFilters(filters);
+  return JSON.stringify([q?.trim() || null, status, quality && [...quality].sort(), hdr, decade, genre && [...genre].sort()]);
 }
 
 /** Whether any filter (not counting sort, grouping or view) narrows the list. */

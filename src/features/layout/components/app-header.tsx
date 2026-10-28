@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BellIcon, RefreshCwIcon, SearchIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/features/library";
 import { ThemeToggle } from "@/features/theme";
 import { Kbd } from "@/components/ui/kbd";
+import { useOnMoviesPage } from "../hooks/use-on-movies-page";
 
 export function AppHeader() {
   const folderQuery = useLibraryFolder();
@@ -36,9 +37,7 @@ export function AppHeader() {
   // The search box drives the Movies page's title filter (`q` in its URL). Typing elsewhere
   // opens Movies; once there, each keystroke replaces the entry instead of adding history.
   const navigate = useNavigate();
-  const onMoviesPage = useLocation({
-    select: (location) => location.pathname.replace(/\/$/, "") === "/movies",
-  });
+  const onMoviesPage = useOnMoviesPage();
   const query = useSearch({
     strict: false,
     select: (search) => ("q" in search ? search.q : undefined),

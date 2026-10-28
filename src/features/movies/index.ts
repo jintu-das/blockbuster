@@ -1,4 +1,4 @@
 export { MoviesPage } from "./components/movies-page";
-export { parseMovieFilters } from "./lib/movie-filters";
+export { MOVIE_VIEWS, narrowingKey, parseMovieFilters } from "./lib/movie-filters";
 export type { MovieFilters, WatchStatus } from "./types";
-export { decadeOf, resolutionOf, sortMovies, watchStatusOf } from "./lib/apply-movie-filters";
+export { countMovies, decadeOf, resolutionOf, sortMovies, watchStatusOf } from "./lib/apply-movie-filters";

@@ -58,6 +58,12 @@ export function sortMovies(movies: Movie[], sort: SortKey = DEFAULT_SORT) {
   return [...movies].sort((a, b) => compare(a, b) || titleOrder.compare(a.title, b.title));
 }
 
+/** How many movies `filters` would show, without sorting them. */
+export function countMovies(movies: Movie[], filters: MovieFilters) {
+  const query = filters.q?.trim().toLowerCase() ?? "";
+  return movies.reduce((count, movie) => count + (matches(movie, filters, query) ? 1 : 0), 0);
+}
+
 export function applyMovieFilters(movies: Movie[], filters: MovieFilters) {
   const query = filters.q?.trim().toLowerCase() ?? "";
   return sortMovies(
