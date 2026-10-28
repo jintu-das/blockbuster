@@ -1,5 +1,4 @@
 import { FolderOpenIcon, SearchXIcon } from "lucide-react";
-import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import {
@@ -15,8 +14,9 @@ import {
   useLibraryMovies,
   type Movie,
 } from "@/features/library";
-import { applyMovieFilters, decadeOf } from "../lib/apply-movie-filters";
-import { groupMovies } from "../lib/group-movies";
+import { useCollapsedGroups } from "../hooks/use-collapsed-groups";
+import { useFilteredMovies } from "../hooks/use-filtered-movies";
+import { useMovieFacets } from "../hooks/use-movie-facets";
 import { clearNarrowing, cleanFilters, hasActiveFilters } from "../lib/movie-filters";
 import type { MovieFilters } from "../types";
 import { ActiveFilterChips, MovieFilterBar } from "./movie-filter-bar";
@@ -35,41 +35,15 @@ export function MoviesPage({
   const { movies, isLoading, error, refetch } = useLibraryMovies();
   const chooseFolder = useChooseLibraryFolder();
   const isBusy = useLibraryBusy();
-  // Collapsed group keys; reset when the grouping changes, since keys differ per grouping.
-  const [collapsed, setCollapsed] = useState<{ group?: string; keys: Set<string> }>({ keys: new Set() });
-  const collapsedKeys = collapsed.group === filters.group ? collapsed.keys : new Set<string>();
+  const { results, groups, totalBytes } = useFilteredMovies(movies, filters, folder);
+  const { decades, genres } = useMovieFacets(movies);
+  const collapse = useCollapsedGroups(filters.group);
   const setFilters = (next: MovieFilters) => onFiltersChange(cleanFilters(next));
-
-  const results = useMemo(() => applyMovieFilters(movies, filters), [movies, filters]);
-  const groups = useMemo(
-    () => (filters.group ? groupMovies(results, filters.group, folder) : undefined),
-    [results, filters.group, folder],
-  );
-  const decades = useMemo(
-    () =>
-      [...new Set(movies.flatMap((movie) => (movie.year !== undefined ? [decadeOf(movie.year)] : [])))].sort(
-        (a, b) => b - a,
-      ),
-    [movies],
-  );
-  const genres = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const genre of movies.flatMap((movie) => movie.genres)) counts.set(genre, (counts.get(genre) ?? 0) + 1);
-    return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([name, count]) => ({ name, count }));
-  }, [movies]);
-  const totalBytes = useMemo(() => results.reduce((sum, movie) => sum + movie.sizeBytes, 0), [results]);
 
   if (error) return <LibraryLoadError error={error} onRetry={refetch} />;
   if (isLoading) return <MovieGridSkeleton />;
   if (movies.length === 0) return <LibraryEmptyState />;
 
-  const toggleGroup = (key: string) => {
-    const keys = new Set(collapsedKeys);
-    if (!keys.delete(key)) keys.add(key);
-    setCollapsed({ group: filters.group, keys });
-  };
-  const setAllCollapsed = (collapse: boolean) =>
-    setCollapsed({ group: filters.group, keys: new Set(collapse ? groups?.map((group) => group.key) : []) });
   const renderMovies = (list: Movie[]) =>
     filters.view === "list" ? <MovieList movies={list} /> : <MovieGrid movies={list} />;
 
@@ -116,10 +90,10 @@ export function MoviesPage({
         <>
           <div className="-mt-2 flex items-center gap-1 text-xs text-muted-foreground">
             <span className="font-mono">{groups.length} groups</span>
-            <Button variant="link" size="xs" className="text-muted-foreground" onClick={() => setAllCollapsed(false)}>
+            <Button variant="link" size="xs" className="text-muted-foreground" onClick={() => collapse.setAll(false)}>
               Expand all
             </Button>
-            <Button variant="link" size="xs" className="text-muted-foreground" onClick={() => setAllCollapsed(true)}>
+            <Button variant="link" size="xs" className="text-muted-foreground" onClick={() => collapse.setAll(true)}>
               Collapse all
             </Button>
           </div>
@@ -127,8 +101,8 @@ export function MoviesPage({
             <MovieGroupSection
               key={group.key}
               group={group}
-              collapsed={collapsedKeys.has(group.key)}
-              onToggle={() => toggleGroup(group.key)}
+              collapsed={collapse.isCollapsed(group.key)}
+              onToggle={collapse.toggle}
             >
               {renderMovies(group.movies)}
             </MovieGroupSection>

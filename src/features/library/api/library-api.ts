@@ -24,6 +24,12 @@ function toIso(unixSeconds: number) {
   return new Date(unixSeconds * 1000).toISOString();
 }
 
+/** OMDb's "Action, Sci-Fi" as a list, tolerating missing spaces and repeats. */
+function toGenres(genre: string | null) {
+  if (!genre || genre === "N/A") return [];
+  return [...new Set(genre.split(",").map((name) => name.trim()).filter(Boolean))];
+}
+
 function toMovie(dto: MovieDto): Movie {
   const { durationSeconds, progressSeconds } = dto;
   return {
@@ -39,7 +45,7 @@ function toMovie(dto: MovieDto): Movie {
     progressSeconds: progressSeconds ?? undefined,
     quality: dto.quality ?? undefined,
     thumbnailFile: dto.thumbnailFile ?? undefined,
-    genres: dto.genre && dto.genre !== "N/A" ? dto.genre.split(", ") : [],
+    genres: toGenres(dto.genre),
   };
 }
 

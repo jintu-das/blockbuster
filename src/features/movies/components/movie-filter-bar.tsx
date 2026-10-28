@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { clearNarrowing, DEFAULT_SORT, GROUP_OPTIONS, RESOLUTIONS, SORT_OPTIONS, STATUS_OPTIONS } from "../lib/movie-filters";
-import type { MovieFilters, Resolution } from "../types";
+import type { GenreOption, MovieFilters, Resolution } from "../types";
 
 type FilterBarProps = {
   filters: MovieFilters;
@@ -22,7 +22,7 @@ type FilterBarProps = {
   /** Decades that have at least one movie, newest first. */
   decades: number[];
   /** Genres that have at least one movie, A–Z, with how many movies each has. */
-  genres: { name: string; count: number }[];
+  genres: GenreOption[];
 };
 
 function FilterTrigger({ label, count }: { label: string; count?: number }) {

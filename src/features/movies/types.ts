@@ -7,6 +7,9 @@ export type SortKey = "added" | "played" | "played-oldest" | "title" | "year" | 
 
 export type GroupKey = "letter" | "decade" | "quality" | "status" | "folder";
 
+/** A Genre menu entry: a genre in the catalog and how many movies have it. */
+export type GenreOption = { name: string; count: number };
+
 export type ViewMode = "grid" | "list";
 
 /** Movies page filters, kept in the URL so they survive opening a movie and coming back. */

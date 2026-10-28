@@ -11,7 +11,8 @@ export function MovieGroupSection({
 }: {
   group: MovieGroup;
   collapsed: boolean;
-  onToggle: () => void;
+  /** Called with the group's key, so callers can pass one stable handler to every section. */
+  onToggle: (key: string) => void;
   children: React.ReactNode;
 }) {
   const totalBytes = group.movies.reduce((sum, movie) => sum + movie.sizeBytes, 0);
@@ -21,7 +22,7 @@ export function MovieGroupSection({
       <button
         type="button"
         aria-expanded={!collapsed}
-        onClick={onToggle}
+        onClick={() => onToggle(group.key)}
         className="group/header flex items-center gap-2 self-start rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ChevronRightIcon
