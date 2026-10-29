@@ -1,3 +1,4 @@
+export { ArtworkBackdrop } from "./components/artwork-backdrop";
 export { LibraryEmptyState } from "./components/library-empty-state";
 export { LibraryLoadError } from "./components/library-load-error";
 export { libraryKeys } from "./api/library-api";
@@ -14,7 +15,6 @@ export { useLibraryMovies } from "./hooks/use-library-movies";
 export { usePlayMovie } from "./hooks/use-play-movie";
 export { useScanLibrary } from "./hooks/use-scan-library";
 export { useStartupScan } from "./hooks/use-startup-scan";
-export { useArtwork } from "./hooks/use-artwork";
 export { useThumbnail } from "./hooks/use-thumbnail";
 export { errorMessage } from "./lib/error-message";
 export { formatDuration } from "./lib/format-duration";
