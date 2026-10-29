@@ -1,4 +1,9 @@
-import { LibraryEmptyState, LibraryLoadError, MovieGridSkeleton, useLibraryMovies } from "@/features/library";
+import {
+  LibraryEmptyState,
+  LibraryLoadError,
+  MovieGridSkeleton,
+  useLibraryMovies,
+} from "@/features/library";
 import { MOVIE_VIEWS } from "@/features/movies";
 import { useHomeSections } from "../hooks/use-home-sections";
 import { HomeBillboard } from "./home-billboard";
@@ -43,7 +48,10 @@ export function HomePage() {
         <MovieShelf
           title={`From the ${home.topDecade}s`}
           movies={home.fromTopDecade}
-          viewAll={{ to: "/movies", search: MOVIE_VIEWS.decade(home.topDecade) }}
+          viewAll={{
+            to: "/movies",
+            search: MOVIE_VIEWS.decade(home.topDecade),
+          }}
         />
       )}
       <MovieShelf

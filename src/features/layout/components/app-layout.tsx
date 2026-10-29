@@ -10,7 +10,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      {/* min-w-0 lets the inset shrink beside the sidebar; without it, wide content such as the
+          Home shelves' scroll rows holds it at full window width and pushes the page sideways. */}
+      <SidebarInset className="min-w-0">
         <AppHeader />
         <div className="flex flex-1 flex-col p-6">{children}</div>
       </SidebarInset>
