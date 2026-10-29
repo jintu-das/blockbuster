@@ -27,7 +27,8 @@ export const MOVIE_VIEWS = {
   unwatched: { status: "unwatched" },
   fourK: { quality: ["4K"] },
   watchAgain: { status: "watched", sort: "played-oldest" },
-} satisfies Record<string, MovieFilters>;
+  decade: (decade: number): MovieFilters => ({ decade }),
+} satisfies Record<string, MovieFilters | ((value: number) => MovieFilters)>;
 
 export const GROUP_OPTIONS: { value: GroupKey | undefined; label: string }[] = [
   { value: undefined, label: "No grouping" },

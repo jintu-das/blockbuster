@@ -53,9 +53,36 @@ const comparators: Record<SortKey, (a: Movie, b: Movie) => number> = {
   size: (a, b) => b.sizeBytes - a.sizeBytes,
 };
 
-export function sortMovies(movies: Movie[], sort: SortKey = DEFAULT_SORT) {
+function comparatorFor(sort: SortKey) {
   const compare = comparators[sort];
-  return [...movies].sort((a, b) => compare(a, b) || titleOrder.compare(a.title, b.title));
+  return (a: Movie, b: Movie) => compare(a, b) || titleOrder.compare(a.title, b.title);
+}
+
+export function sortMovies(movies: Movie[], sort: SortKey = DEFAULT_SORT) {
+  return [...movies].sort(comparatorFor(sort));
+}
+
+/**
+ * The first `limit` movies of `sortMovies(movies, sort)`, without sorting the whole list: Home
+ * rebuilds its shelves on every catalog refetch and only shows a few movies per shelf.
+ */
+export function topMovies(movies: Movie[], sort: SortKey, limit: number) {
+  const compare = comparatorFor(sort);
+  const top: Movie[] = [];
+  for (const movie of movies) {
+    if (top.length === limit && (limit === 0 || compare(movie, top[limit - 1]) >= 0)) continue;
+    // Insert after equal movies, so ties keep catalog order as the stable sort does.
+    let low = 0;
+    let high = top.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (compare(movie, top[middle]) < 0) high = middle;
+      else low = middle + 1;
+    }
+    top.splice(low, 0, movie);
+    if (top.length > limit) top.pop();
+  }
+  return top;
 }
 
 /** How many movies `filters` would show, without sorting them. */

@@ -197,6 +197,8 @@ pub enum StoredProgress {
     /// Forget the position, so the next play starts from the beginning.
     Clear,
     Seconds(i64),
+    /// Too short to count as a play: leave the position and `last_played_at` as they are.
+    Skip,
 }
 
 pub struct PlaybackTarget {
@@ -232,8 +234,8 @@ pub fn looks_unmounted(conn: &Connection, scan: &FolderScan) -> rusqlite::Result
     Ok(false)
 }
 
-/// Records a playback session: always stamps `last_played_at`, fills in the duration when the
-/// player reported one, and updates the resume position as `progress` says.
+/// Records a playback session: stamps `last_played_at` unless `progress` is `Skip`, fills in the
+/// duration when the player reported one, and updates the resume position as `progress` says.
 pub fn save_playback(
     conn: &Connection,
     id: i64,
@@ -242,18 +244,19 @@ pub fn save_playback(
     now: i64,
 ) -> rusqlite::Result<()> {
     let (keep_progress, seconds) = match progress {
-        StoredProgress::Keep => (true, None),
+        StoredProgress::Keep | StoredProgress::Skip => (true, None),
         StoredProgress::Clear => (false, None),
         StoredProgress::Seconds(seconds) => (false, Some(seconds)),
     };
+    let played_at = (progress != StoredProgress::Skip).then_some(now);
     conn.prepare_cached(
         "UPDATE movies
-         SET last_played_at = ?2,
+         SET last_played_at = COALESCE(?2, last_played_at),
              duration_seconds = COALESCE(?3, duration_seconds),
              progress_seconds = CASE WHEN ?4 THEN progress_seconds ELSE ?5 END
          WHERE id = ?1",
     )?
-    .execute(params![id, now, duration_seconds, keep_progress, seconds])?;
+    .execute(params![id, played_at, duration_seconds, keep_progress, seconds])?;
     Ok(())
 }
 
@@ -441,8 +444,23 @@ mod tests {
         let movie = movie(&conn, "Arrival");
         assert_eq!((movie.progress_seconds, movie.duration_seconds, movie.last_played_at), (Some(1800), Some(6960), Some(600)));
 
+        // Skip records only the duration: a play closed within seconds leaves the movie as it was.
+        save_playback(&conn, id, StoredProgress::Skip, Some(6961), 650).unwrap();
+        let skipped = super::tests::movie(&conn, "Arrival");
+        assert_eq!((skipped.progress_seconds, skipped.duration_seconds, skipped.last_played_at), (Some(1800), Some(6961), Some(600)));
+
         save_playback(&conn, id, StoredProgress::Clear, None, 700).unwrap();
         assert_eq!(movie_for_playback(&conn, id).unwrap().unwrap().progress_seconds, None);
+    }
+
+    #[test]
+    fn a_skipped_first_play_stays_unplayed() {
+        let conn = open_in_memory();
+        apply_scan(&conn, &scan(&[file("/m/Arrival_2016.mkv", 1, 1)]), 1_793_000_000).unwrap();
+        let id = list_movies(&conn).unwrap()[0].id;
+        save_playback(&conn, id, StoredProgress::Skip, Some(6960), 500).unwrap();
+        let movie = movie(&conn, "Arrival");
+        assert_eq!((movie.progress_seconds, movie.last_played_at), (None, None));
     }
 
     #[test]

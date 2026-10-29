@@ -20,11 +20,9 @@ import {
   formatFileSize,
   usePlayMovie,
   useThumbnail,
-  type Movie,
 } from "@/features/library";
 import { cn } from "@/lib/utils";
-
-export type BillboardItem = { movie: Movie; eyebrow: string };
+import type { BillboardItem } from "../types";
 
 // Translucent pill buttons that read on top of artwork in both themes.
 const glassButton =

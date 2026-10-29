@@ -15,7 +15,7 @@ use crate::subtitles::store::{Selection, SubtitlePlan};
 const SAVE_INTERVAL: Duration = Duration::from_secs(10);
 /// Watching past this fraction counts as finished.
 const FINISHED_FRACTION: f64 = 0.95;
-/// Stopping within this many seconds of the start is not worth resuming.
+/// Stopping within this many seconds of the start is not worth resuming, nor counted as a play.
 const MIN_RESUME_SECONDS: f64 = 10.0;
 const STOP_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -34,8 +34,10 @@ pub fn progress_to_store(playback: &Playback) -> StoredProgress {
     }
     let Some(position) = playback.position else { return StoredProgress::Keep };
     let finished = playback.duration.is_some_and(|duration| duration > 0.0 && position / duration >= FINISHED_FRACTION);
-    if finished || position < MIN_RESUME_SECONDS {
+    if finished {
         StoredProgress::Clear
+    } else if position < MIN_RESUME_SECONDS {
+        StoredProgress::Skip
     } else {
         StoredProgress::Seconds(position as i64)
     }
@@ -214,7 +216,7 @@ mod tests {
         assert_eq!(progress_to_store(&playback(Some(1800.4), Some(7000.0), false)), StoredProgress::Seconds(1800));
         assert_eq!(progress_to_store(&playback(Some(6900.0), Some(7000.0), false)), StoredProgress::Clear);
         assert_eq!(progress_to_store(&playback(Some(1800.0), Some(7000.0), true)), StoredProgress::Clear);
-        assert_eq!(progress_to_store(&playback(Some(4.0), Some(7000.0), false)), StoredProgress::Clear);
+        assert_eq!(progress_to_store(&playback(Some(4.0), Some(7000.0), false)), StoredProgress::Skip);
         assert_eq!(progress_to_store(&playback(None, Some(7000.0), false)), StoredProgress::Keep);
         assert_eq!(progress_to_store(&playback(Some(1800.0), None, false)), StoredProgress::Seconds(1800));
     }
@@ -379,6 +381,6 @@ mod tests {
         assert!((5.0..8.0).contains(&position), "position {position}");
         assert!(result.duration.is_some_and(|duration| (19.0..21.0).contains(&duration)));
         assert!(!result.ended_at_eof);
-        assert_eq!(progress_to_store(&result), StoredProgress::Clear, "under 10 s is not worth resuming");
+        assert_eq!(progress_to_store(&result), StoredProgress::Skip, "under 10 s is not a play");
     }
 }
