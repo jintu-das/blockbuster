@@ -18,8 +18,8 @@ import {
 import {
   formatDuration,
   formatFileSize,
+  useArtwork,
   usePlayMovie,
-  useThumbnail,
 } from "@/features/library";
 import { cn } from "@/lib/utils";
 import type { BillboardItem } from "../types";
@@ -31,7 +31,7 @@ const glassButton =
 function BillboardSlide({ item }: { item: BillboardItem }) {
   const { movie } = item;
   const playMovie = usePlayMovie();
-  const thumbnail = useThumbnail(movie);
+  const artwork = useArtwork(movie);
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
   const remainingMinutes =
     movie.durationMinutes !== undefined
@@ -46,18 +46,18 @@ function BillboardSlide({ item }: { item: BillboardItem }) {
 
   return (
     <div className="absolute inset-0 isolate animate-in duration-700 fade-in">
-      {thumbnail ? (
+      {artwork ? (
         <>
           {/* Ambient glow: the art's colours wash the whole banner. */}
           <img
-            src={thumbnail}
+            src={artwork}
             alt=""
             className="absolute inset-0 -z-20 size-full scale-125 object-cover opacity-35 blur-3xl saturate-150"
           />
           {/* Key art: sharp on the right, dissolving into the banner on the left. */}
           <div className="absolute inset-y-0 right-0 -z-10 w-full overflow-hidden mask-[linear-gradient(to_left,black_40%,transparent)] md:w-[68%] md:mask-[linear-gradient(to_left,black_55%,transparent)]">
             <img
-              src={thumbnail}
+              src={artwork}
               alt=""
               className="size-full object-cover object-[center_25%] motion-safe:animate-billboard-zoom"
             />

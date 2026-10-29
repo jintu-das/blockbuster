@@ -19,7 +19,7 @@ flowchart LR
 
   subgraph RS["Rust backend: blockbuster_lib"]
     direction TB
-    CMD["Commands (all via blocking())<br/>get/set_library_folder · scan_library<br/>list_movies · get_movie_details · get_thumbnail · play_movie<br/>list/add/remove/search/download_subtitle(s) · set_subtitle_choice"]
+    CMD["Commands (all via blocking())<br/>get/set_library_folder · scan_library<br/>list_movies · get_movie_details · get_thumbnail · get_artwork · play_movie<br/>list/add/remove/search/download_subtitle(s) · set_subtitle_choice"]
     LIB["library/<br/>scanner · title · catalog"]
     PLY["player/<br/>mpv · session"]
     MED["media/<br/>enrich (PassGate) · probe · poster"]
@@ -91,6 +91,7 @@ sequenceDiagram
     E--)UI: library-updated (throttled 3 s)
     UI->>C: list_movies → new thumbnailFile
     UI->>C: get_thumbnail(id) → JPEG → data URL (cards: once near the viewport)
+    UI->>C: get_artwork(id) → ~1500 px poster, downloaded on first use (banners; thumbnail until then)
     UI->>C: get_movie_details(id) → omdb_json, media_json (details page)
   end
 ```

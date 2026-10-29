@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use rusqlite::{params, Connection};
 use tauri::{AppHandle, Emitter, Manager};
 
+use super::artwork::{self, LargePosters};
 use super::poster::{self, Omdb};
 use super::probe::{self, Probe};
 use crate::library::commands::with_conn;
@@ -24,6 +25,7 @@ const DEFAULT_FRAME_SECONDS: i64 = 60;
 pub struct Enrichment {
     pub thumbnails_dir: PathBuf,
     omdb: Option<Omdb>,
+    large_posters: LargePosters,
     gate: PassGate,
 }
 
@@ -33,11 +35,17 @@ impl Enrichment {
         self.omdb.is_some()
     }
 
+    /// The large version of movie `id`'s OMDb poster (see `artwork`), downloaded on first use.
+    pub fn large_poster(&self, id: i64, poster_url: Option<&str>) -> Option<PathBuf> {
+        self.large_posters.get(&self.thumbnails_dir, id, poster_url)
+    }
+
     /// Posters are only looked up when `omdb_api_key` is set; otherwise every movie gets a frame.
     pub fn new(thumbnails_dir: PathBuf, omdb_api_key: Option<String>) -> Self {
         Enrichment {
             thumbnails_dir,
             omdb: omdb_api_key.filter(|key| !key.is_empty()).map(Omdb::new),
+            large_posters: LargePosters::new(),
             gate: PassGate::default(),
         }
     }
@@ -228,6 +236,8 @@ fn enrich(app: &AppHandle, state: &Enrichment, tools: &mut Tools, mut movie: Pen
                 if let Some(old) = movie.thumbnail_file.as_deref().filter(|old| *old != file) {
                     let _ = fs::remove_file(state.thumbnails_dir.join(old));
                 }
+                // A large copy of the previous poster no longer matches; the next banner refetches it.
+                let _ = fs::remove_file(artwork::large_poster_path(&state.thumbnails_dir, movie.id));
                 movie.thumbnail_file = Some(file);
                 changed = true;
             }

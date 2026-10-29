@@ -122,19 +122,37 @@ pub async fn get_movie_details(app: AppHandle, movie_id: i64) -> Result<Option<M
 /// forgotten and a metadata pass makes a new one.
 #[tauri::command]
 pub async fn get_thumbnail(app: AppHandle, movie_id: i64) -> Result<Response, String> {
-    blocking(app, move |app| {
-        let file = with_conn(app, |conn| catalog::thumbnail_file(conn, movie_id))?
-            .ok_or("This movie has no thumbnail yet.")?;
-        let path = app.state::<media::Enrichment>().thumbnails_dir.join(file);
-        match std::fs::read(path) {
-            Ok(bytes) => Ok(Response::new(bytes)),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                with_conn(app, |conn| media::forget_thumbnail(conn, movie_id))?;
-                media::spawn(app);
-                Err("The thumbnail is being made again.".into())
-            }
-            Err(error) => Err(to_message(error)),
+    blocking(app, move |app| read_thumbnail(app, movie_id)).await
+}
+
+fn read_thumbnail(app: &AppHandle, movie_id: i64) -> Result<Response, String> {
+    let file = with_conn(app, |conn| catalog::thumbnail_file(conn, movie_id))?
+        .ok_or("This movie has no thumbnail yet.")?;
+    let path = app.state::<media::Enrichment>().thumbnails_dir.join(file);
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(Response::new(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            with_conn(app, |conn| media::forget_thumbnail(conn, movie_id))?;
+            media::spawn(app);
+            Err("The thumbnail is being made again.".into())
         }
+        Err(error) => Err(to_message(error)),
+    }
+}
+
+/// Artwork for full-width banners: the movie's OMDb poster at about 1500 px, downloaded the
+/// first time it is asked for. Falls back to the thumbnail when the movie has no OMDb poster
+/// (e.g. an ffmpeg frame) or the large one can't be fetched.
+#[tauri::command]
+pub async fn get_artwork(app: AppHandle, movie_id: i64) -> Result<Response, String> {
+    blocking(app, move |app| {
+        // The URL is read under the database lock; the download runs without it.
+        let poster_url = with_conn(app, |conn| media::poster_url(conn, movie_id))?;
+        let large = app.state::<media::Enrichment>().large_poster(movie_id, poster_url.as_deref());
+        if let Some(bytes) = large.and_then(|path| std::fs::read(path).ok()) {
+            return Ok(Response::new(bytes));
+        }
+        read_thumbnail(app, movie_id)
     })
     .await
 }

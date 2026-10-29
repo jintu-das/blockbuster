@@ -41,6 +41,7 @@ pub fn run() {
             commands::list_movies,
             commands::get_movie_details,
             commands::get_thumbnail,
+            commands::get_artwork,
             player::commands::play_movie,
             subtitles::commands::list_subtitles,
             subtitles::commands::set_subtitle_choice,

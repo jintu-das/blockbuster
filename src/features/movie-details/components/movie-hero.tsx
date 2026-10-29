@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDuration, usePlayMovie, useThumbnail } from "@/features/library";
+import { formatDuration, useArtwork, usePlayMovie } from "@/features/library";
 import { audioLabel, formatBitrate } from "../lib/describe-stream";
 import { formatTimestamp } from "../lib/format-timestamp";
 import type { MovieDetails } from "../types";
@@ -26,7 +26,7 @@ export function MovieHero({ movie }: { movie: MovieDetails }) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const playMovie = usePlayMovie();
-  const thumbnail = useThumbnail(movie);
+  const artwork = useArtwork(movie);
   const { omdb, media } = movie;
   const audio = media && audioLabel(media.streams);
   const progress = Math.min(Math.max(movie.progress ?? 0, 0), 1);
@@ -39,8 +39,8 @@ export function MovieHero({ movie }: { movie: MovieDetails }) {
 
   return (
     <section className="relative isolate overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-      {thumbnail && (
-        <img src={thumbnail} alt="" className="absolute inset-0 -z-10 size-full scale-105 object-cover opacity-40" />
+      {artwork && (
+        <img src={artwork} alt="" className="absolute inset-0 -z-10 size-full scale-105 object-cover opacity-40" />
       )}
       <div className="absolute inset-0 -z-10 bg-linear-to-t from-card via-card/85 to-transparent" />
       <div className="absolute inset-0 -z-10 bg-linear-to-r from-card via-card/70 to-transparent" />

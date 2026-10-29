@@ -65,6 +65,7 @@ export const libraryApi = {
   listMovies: async () => (await invoke<MovieDto[]>("list_movies")).map(toMovie),
   /** JPEG bytes, as a data URL so the query cache can hold it without leaking object URLs. */
   thumbnail: async (id: string) => toDataUrl(await invoke<ArrayBuffer>("get_thumbnail", { movieId: Number(id) })),
+  artwork: async (id: string) => toDataUrl(await invoke<ArrayBuffer>("get_artwork", { movieId: Number(id) })),
   play: (id: string, fromStart: boolean) => invoke<void>("play_movie", { movieId: Number(id), fromStart }),
 };
 
@@ -74,6 +75,7 @@ export const libraryApi = {
  */
 export const thumbnailKeys = {
   of: (id: string, file: string | undefined) => ["thumbnail", id, file] as const,
+  artwork: (id: string, file: string | undefined) => ["thumbnail", id, file, "artwork"] as const,
 };
 
 /** Kept outside `libraryKeys.all`, so starting playback never marks scans as busy. */

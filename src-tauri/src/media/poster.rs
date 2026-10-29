@@ -50,10 +50,14 @@ pub struct Omdb {
     api_key: String,
 }
 
+/// An HTTP client for OMDb and poster images.
+pub fn http_agent() -> ureq::Agent {
+    ureq::Agent::config_builder().timeout_global(Some(HTTP_TIMEOUT)).build().into()
+}
+
 impl Omdb {
     pub fn new(api_key: String) -> Self {
-        let agent = ureq::Agent::config_builder().timeout_global(Some(HTTP_TIMEOUT)).build().into();
-        Omdb { agent, api_key }
+        Omdb { agent: http_agent(), api_key }
     }
 
     /// The OMDb entry for a movie. `Ok(None)` is a definite "not found"; `Err` is a network,
@@ -114,20 +118,36 @@ impl Omdb {
         self.agent.get(OMDB_URL).query("apikey", &self.api_key).query("type", "movie")
     }
 
-    /// Saves the image at `url` to `dest`, writing a temporary file first so a failed download
-    /// never leaves a partial image behind. `Ok(false)` means the image is gone for good (an
-    /// HTTP 4xx, e.g. a stale link); `Err` is a network problem worth retrying.
     pub fn download(&self, url: &str, dest: &Path) -> Result<bool, String> {
-        match self.agent.get(url).call() {
-            Ok(mut response) => {
-                let bytes = response.body_mut().read_to_vec().map_err(|error| format!("poster download: {error}"))?;
-                write_atomically(dest, &bytes).map_err(|error| error.to_string())?;
-                Ok(true)
-            }
-            Err(ureq::Error::StatusCode(status)) if (400..500).contains(&status) => Ok(false),
-            Err(error) => Err(format!("poster download: {error}")),
-        }
+        download(&self.agent, url, dest)
     }
+}
+
+/// Saves the image at `url` to `dest`, writing a temporary file first so a failed download
+/// never leaves a partial image behind. `Ok(false)` means the image is gone for good (an
+/// HTTP 4xx, e.g. a stale link); `Err` is a network problem worth retrying.
+pub fn download(agent: &ureq::Agent, url: &str, dest: &Path) -> Result<bool, String> {
+    match agent.get(url).call() {
+        Ok(mut response) => {
+            let bytes = response.body_mut().read_to_vec().map_err(|error| format!("poster download: {error}"))?;
+            write_atomically(dest, &bytes).map_err(|error| error.to_string())?;
+            Ok(true)
+        }
+        Err(ureq::Error::StatusCode(status)) if (400..500).contains(&status) => Ok(false),
+        Err(error) => Err(format!("poster download: {error}")),
+    }
+}
+
+/// The same poster about 1500 px wide. OMDb links to Amazon's image service at about 380 px,
+/// e.g. `…@._V1_QL75_UX380_CR0,0,380,562_.jpg`: everything after `._V1_` is resize and crop
+/// steps, so replacing it asks for a larger render of the same artwork. `None` for any other
+/// kind of link.
+pub fn large_poster_url(url: &str) -> Option<String> {
+    if !url.starts_with("https://m.media-amazon.com/") {
+        return None;
+    }
+    let (artwork, steps) = url.rsplit_once("._V1_")?;
+    steps.ends_with(".jpg").then(|| format!("{artwork}._V1_SX1500.jpg"))
 }
 
 /// Whether OMDb found something. Only key and rate-limit errors are `Err`: they affect every
@@ -241,6 +261,19 @@ mod tests {
         assert_eq!(found.search[0].imdb_id, "tt0080009");
         let missed: SearchReply = serde_json::from_str(r#"{"Response":"False","Error":"Movie not found!"}"#).unwrap();
         assert!(missed.search.is_empty());
+    }
+
+    #[test]
+    fn large_posters_drop_the_resize_steps() {
+        let base = "https://m.media-amazon.com/images/M/MV5BNDFkMTRkZmQ@";
+        assert_eq!(
+            large_poster_url(&format!("{base}._V1_QL75_UY562_CR1,0,380,562_.jpg")),
+            Some(format!("{base}._V1_SX1500.jpg"))
+        );
+        assert_eq!(large_poster_url(&format!("{base}._V1_SX300.jpg")), Some(format!("{base}._V1_SX1500.jpg")));
+        assert_eq!(large_poster_url("N/A"), None);
+        assert_eq!(large_poster_url("https://example.com/poster._V1_SX300.jpg"), None);
+        assert_eq!(large_poster_url("https://m.media-amazon.com/images/M/plain.jpg"), None);
     }
 
     #[test]
