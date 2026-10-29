@@ -50,17 +50,6 @@ export function AppHeader() {
           {isScanning ? "Scanning..." : "Scan library"}
         </Button>
 
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button variant="ghost" size="icon" aria-label="Notifications" />
-            }
-          >
-            <BellIcon />
-          </TooltipTrigger>
-          <TooltipContent>Notifications</TooltipContent>
-        </Tooltip>
-
         <ThemeToggle />
       </div>
     </header>
