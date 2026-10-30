@@ -1,5 +1,4 @@
 import { Link, useMatchRoute, useSearch } from "@tanstack/react-router";
-import { ClapperboardIcon } from "lucide-react";
 import { useMemo } from "react";
 import {
   Sidebar,
@@ -45,9 +44,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip="Blockbuster" render={<Link to="/" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <ClapperboardIcon />
-              </div>
+              <img src="/logo.png" alt="" className="size-8 shrink-0" />
               <div className="flex flex-col gap-0.5 leading-none">
                 <span className="font-heading font-semibold">Blockbuster</span>
                 <span className="text-xs text-muted-foreground">Local movie library</span>
