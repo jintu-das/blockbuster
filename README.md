@@ -63,11 +63,7 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 
 ## Installing (Fedora)
 
-1. Complete steps 1 and 2 of [Setup](#setup-fedora), and install the RPM packaging tool:
-
-   ```bash
-   sudo dnf install rpm-build
-   ```
+1. Complete steps 1 and 2 of [Setup](#setup-fedora).
 
 2. Build the RPM package:
 
