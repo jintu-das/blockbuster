@@ -11,6 +11,7 @@ import {
 } from "@/features/library";
 import { ThemeToggle } from "@/features/theme";
 import { HeaderSearch } from "./header-search";
+import { WindowControls } from "./window-controls";
 
 export function AppHeader() {
   const folderQuery = useLibraryFolder();
@@ -22,7 +23,12 @@ export function AppHeader() {
   const hasNoFolder = folderQuery.data === null;
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
+    // The header doubles as the title bar: its empty space drags the window, and a
+    // double-click maximizes. Tauri only reacts to the marked element, not its children.
+    <header
+      data-tauri-drag-region
+      className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 select-none"
+    >
       <SidebarTrigger />
       <Separator
         orientation="vertical"
@@ -31,7 +37,9 @@ export function AppHeader() {
 
       <HeaderSearch />
 
-      <div className="ml-auto flex items-center gap-1">
+      <div data-tauri-drag-region className="h-full flex-1" />
+
+      <div className="flex items-center gap-1">
         <Button
           variant="outline"
           disabled={isScanning || folderQuery.isPending}
@@ -47,6 +55,12 @@ export function AppHeader() {
 
         <ThemeToggle />
       </div>
+
+      <Separator
+        orientation="vertical"
+        className="mx-1 data-vertical:h-4 data-vertical:self-auto"
+      />
+      <WindowControls />
     </header>
   );
 }
