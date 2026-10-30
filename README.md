@@ -9,6 +9,10 @@
   Browse with posters and details, press play, and pick up right where you left off.
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/home.jpg" alt="Blockbuster Home page with a Continue watching banner for The Empire Strikes Back and a shelf of movies in progress">
+</p>
+
 ---
 
 ## What it does
@@ -70,9 +74,13 @@ Every movie in your library. Type in the search box at the top to find a title. 
 
 Your filters stay in place when you go back to the list.
 
+![Movies page showing a poster grid with quality badges and filter menus](docs/screenshots/movies.jpg)
+
 ### Movie details
 
 Click a movie's title to open its page: the plot, cast and crew, ratings from IMDb, Rotten Tomatoes and Metacritic, and technical details such as resolution, audio and file size. From here you can resume, or start over from the beginning.
+
+![Movie details page for Pulp Fiction with synopsis, ratings, cast and media info](docs/screenshots/movie-details.jpg)
 
 ### Playback
 
