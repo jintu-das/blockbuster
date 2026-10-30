@@ -59,6 +59,53 @@ Choose one folder, scan its video files, browse the results, play a file in mpv,
 
    Without a key, subtitles still work from files. Downloads without a login are limited to a few a day.
 
+   Keys in `~/.bashrc` only reach the app when it is started from a terminal. For the installed app, see [API keys for the installed app](#api-keys-for-the-installed-app).
+
+## Installing (Fedora)
+
+1. Complete steps 1 and 2 of [Setup](#setup-fedora), and install the RPM packaging tool:
+
+   ```bash
+   sudo dnf install rpm-build
+   ```
+
+2. Build the RPM package:
+
+   ```bash
+   npm run tauri build -- --bundles rpm
+   ```
+
+   The package is written to `src-tauri/target/release/bundle/rpm/`.
+
+3. Install it:
+
+   ```bash
+   sudo dnf install ./src-tauri/target/release/bundle/rpm/blockbuster-*.rpm
+   ```
+
+4. Start Blockbuster from the app menu, or run `blockbuster` in a terminal. `mpv` and `ffmpeg` must stay installed.
+
+To update, rebuild and run the same `dnf install` command. To uninstall, run `sudo dnf remove blockbuster`. The catalog, progress and thumbnails in `~/.local/share/com.jintudas.blockbuster/` are kept in both cases.
+
+### API keys for the installed app
+
+The build contains no keys. Blockbuster reads `OMDB_API_KEY` and `OPENSUBTITLES_API_KEY` each time it starts, so you can add keys at any time without rebuilding.
+
+Apps started from the app menu do not read `~/.bashrc`. Set the keys for your login session instead:
+
+```bash
+mkdir -p ~/.config/environment.d
+cat > ~/.config/environment.d/blockbuster.conf <<'EOF'
+OMDB_API_KEY=your_omdb_key
+OPENSUBTITLES_API_KEY=your_opensubtitles_key
+EOF
+chmod 600 ~/.config/environment.d/blockbuster.conf
+```
+
+Log out and back in, then start Blockbuster. Leave out a line for a key you don't have. To try a key once without changing your session, run `OMDB_API_KEY=your_key blockbuster` from a terminal.
+
+On the first start with an OMDb key, the background pass looks up every movie that was never looked up before and replaces frame thumbnails with posters. No rescan is needed.
+
 ## Running
 
 | Command | What it does |
