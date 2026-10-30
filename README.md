@@ -1,108 +1,206 @@
-# Blockbuster
+<p align="center">
+  <img src="app-icon.png" alt="Blockbuster logo" width="128" height="128">
+</p>
 
-Blockbuster is a personal desktop app for browsing and playing movies stored on your computer. Point it at one folder and it builds a local catalog with posters, quality and duration, plays movies in mpv, and resumes each one where you left off.
+<h1 align="center">Blockbuster</h1>
 
-## MVP goal
+<p align="center">
+  Your movie folder, as a beautiful library.<br>
+  Browse with posters and details, press play, and pick up right where you left off.
+</p>
 
-Choose one folder, scan its video files, browse the results, play a file in mpv, and resume it from the saved position the next time it is opened.
+---
 
-## Features
+## What it does
 
-| Feature | Status |
+- **Turns a folder into a library.** Choose the folder where your movies live. Blockbuster finds every video inside it, including subfolders, and lists them with posters, year, quality and length.
+- **Remembers where you stopped.** Movies play in [mpv](https://mpv.io). Close the player at any time and Blockbuster resumes from that point next time.
+- **Shows what you have.** See 4K, 1080p and HDR badges, plots, cast, ratings and audio formats. Details are saved, so they work offline.
+- **Helps you choose.** The Home page features continue watching, recently added, unwatched and 4K shelves. The Movies page lets you search, filter, sort and group your whole collection.
+- **Handles subtitles.** Use the ones inside the video or next to it, add your own, or download from OpenSubtitles. Your choice is remembered for each movie.
+- **Never touches your files.** Blockbuster only reads your movies. It never moves, renames or deletes them.
+
+## Install
+
+Blockbuster runs on Linux. These steps are for Fedora.
+
+1. **Install the player and media tools:**
+
+   ```bash
+   sudo dnf install mpv ffmpeg
+   ```
+
+   `mpv` plays your movies. `ffmpeg` reads quality and length, and makes thumbnails.
+
+2. **Download** the latest `blockbuster-<version>.x86_64.rpm` from the [Releases page](https://github.com/jintu-das/blockbuster/releases/latest).
+
+3. **Install it:**
+
+   ```bash
+   sudo dnf install ./blockbuster-*.x86_64.rpm
+   ```
+
+4. **Open Blockbuster** from your app menu.
+
+Prefer to build it yourself? See [Build from source](#build-from-source).
+
+## Getting started
+
+1. **Choose your movie folder.** On first launch, click **Choose folder** and pick the folder that holds your movies.
+2. **Wait a moment.** Your movies appear right away. Quality badges, lengths and thumbnails fill in over the next few minutes as Blockbuster reads each file.
+3. **Press play.** Click a movie to start it in mpv. Close mpv whenever you like; your place is saved.
+4. **Come back later.** Click the movie again, or use **Continue watching** on the Home page, to resume.
+
+Blockbuster checks your folder each time it starts. After adding or removing movies while it is open, click **Scan library** in the top bar.
+
+## Using Blockbuster
+
+### Home
+
+A rotating banner features a movie you're partway through, followed by a few you haven't watched yet. Below it, shelves group your collection: continue watching, recently added, unwatched, 4K, the decade you have the most movies from, and movies to watch again. **View all** on any shelf opens the matching list.
+
+### Movies
+
+Every movie in your library. Type in the search box at the top to find a title. Use the menus to:
+
+- **Filter** by watch status, quality, decade or genre.
+- **Sort** by title, release year, recently added, recently played, file size and more.
+- **Group** into sections: A to Z, decade, quality, watch status or folder.
+- **Switch** between a poster grid and a compact list.
+
+Your filters stay in place when you go back to the list.
+
+### Movie details
+
+Click a movie's title to open its page: the plot, cast and crew, ratings from IMDb, Rotten Tomatoes and Metacritic, and technical details such as resolution, audio and file size. From here you can resume, or start over from the beginning.
+
+### Playback
+
+- Your position is saved every 10 seconds and whenever mpv closes.
+- A movie watched past 95% counts as watched and starts from the beginning next time.
+- Opened something by mistake? If you close it within 10 seconds, nothing is recorded.
+
+### Subtitles
+
+On a movie's page, the **Subtitles** card lists every option:
+
+- **Automatic**: let mpv choose.
+- **Off**: no subtitles.
+- **In the video**: subtitle tracks inside the video file.
+- **Next to the file**: files in the same folder named after the movie, such as `Arrival.en.srt`.
+- **Added**: files you add from your computer (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`) or download from OpenSubtitles.
+
+The option you select is used every time that movie plays.
+
+### Keyboard shortcut
+
+Press `Ctrl+B` to collapse or expand the sidebar.
+
+## Name your files for the best results
+
+Blockbuster reads the title and year from each file name. Including the year gives the most accurate posters and details. These all work:
+
+```
+Arrival (2016).mkv
+Blade Runner 2049 (2017) [2160p].mkv
+Dune.Part.Two.2024.2160p.WEB-DL.mkv
+Spirited_Away_2001.mp4
+```
+
+Supported formats: `.mkv`, `.mp4`, `.m4v`, `.avi`, `.mov`, `.webm`, `.wmv`, `.ts`. Hidden files and folders are skipped.
+
+## Posters and online subtitles (optional)
+
+Blockbuster works without any accounts. Two free services add more:
+
+| Service | What it adds | Without it |
+|---|---|---|
+| [OMDb](https://www.omdbapi.com/apikey.aspx) | Posters, plot, cast, ratings, genres | A frame from the video is used as the thumbnail |
+| [OpenSubtitles](https://www.opensubtitles.com/consumers) | Search and download subtitles | Subtitle files on your computer still work |
+
+**To set them up:**
+
+1. Sign up for a free key at the links above. For OMDb, click the activation link in the email you receive.
+2. Save your keys:
+
+   ```bash
+   mkdir -p ~/.config/environment.d
+   cat > ~/.config/environment.d/blockbuster.conf <<'EOF'
+   OMDB_API_KEY=your_omdb_key
+   OPENSUBTITLES_API_KEY=your_opensubtitles_key
+   EOF
+   chmod 600 ~/.config/environment.d/blockbuster.conf
+   ```
+
+   Leave out the line for any key you don't have.
+
+3. Log out and back in, then open Blockbuster.
+
+Posters and details for your existing movies download automatically in the background. You don't need to rescan.
+
+To try a key once without saving it, start Blockbuster from a terminal: `OMDB_API_KEY=your_key blockbuster`.
+
+## Update or uninstall
+
+- **Update:** download the newer RPM and run `sudo dnf install ./blockbuster-*.x86_64.rpm`.
+- **Uninstall:** `sudo dnf remove blockbuster`.
+
+Your library, watch progress and thumbnails are kept either way. To remove them too, delete `~/.local/share/com.jintudas.blockbuster/`.
+
+## Troubleshooting
+
+**Movies show a video frame instead of a poster.**
+Set up an [OMDb key](#posters-and-online-subtitles-optional). If only some movies are missing posters, add the year to their file names and click **Scan library**.
+
+**A movie has the wrong title or poster.**
+Rename the file to the [recommended format](#name-your-files-for-the-best-results) and click **Scan library**. A renamed file counts as a new movie, so its saved position starts fresh.
+
+**Playing a movie says "mpv is not installed".**
+Run `sudo dnf install mpv`.
+
+**My movies disappeared.**
+Is the drive holding them connected? Blockbuster hides movies it can't find instead of deleting them, and won't empty your library when a drive is unplugged. Reconnect it and click **Scan library**; everything returns with its progress.
+
+**The app icon didn't change after an update.**
+Log out and back in to refresh the icon cache.
+
+## Your data
+
+Everything Blockbuster creates stays on your computer, in `~/.local/share/com.jintudas.blockbuster/`:
+
+| Item | Contents |
 |---|---|
-| Choose and remember one library folder | Done |
-| Scan for common video files into a local SQLite catalog | Done |
-| Browse the catalog (Home and Movies pages) | Done |
-| Quality badge (4K, 1080p, HDR) and duration from ffprobe | Done |
-| Posters from OMDb, with an ffmpeg frame as fallback | Done |
-| Movie details page: OMDb plot, credits and ratings, plus streams from ffprobe, stored for offline use | Done |
-| Play in mpv, save position, resume on next play | Done (Linux/Unix only) |
-| Keep progress for files that go missing and come back | Done |
-| Subtitles: list embedded and sidecar ones, add from a file or OpenSubtitles, remember the choice per movie | Done |
-| Search the catalog | Not started |
-| Scan progress display | Not started |
-| Real disk usage in the sidebar | Mock data |
-| Streaming-style Home (featured billboard, shelves from catalog data) | Done; watchlist and favorites remain out of scope |
+| `blockbuster.db` | Your library, settings and watch progress |
+| `thumbnails/` | Posters and video frames |
+| `subtitles/` | Copies of subtitles you added or downloaded |
 
-## Setup (Fedora)
+The only things sent over the internet are movie titles to OMDb and OpenSubtitles, and only when you've added their keys.
 
-1. Install the build and runtime dependencies:
+---
+
+## For developers
+
+### Build from source
+
+1. Install the build tools and libraries (you also need [Node.js](https://nodejs.org) and [Rust](https://rustup.rs)):
 
    ```bash
    sudo dnf install webkit2gtk4.1-devel gtk3-devel glib2-devel openssl-devel \
      libappindicator-gtk3-devel librsvg2-devel libxdo-devel mpv ffmpeg
    ```
 
-   You also need Node.js and a Rust toolchain. `mpv` is required for playback. `ffmpeg` provides `ffprobe` for quality and duration, and frame thumbnails.
-
-2. Install the JavaScript packages:
+2. Install the JavaScript packages and build the RPM:
 
    ```bash
    npm install
-   ```
-
-3. Optional: get posters. Request a free key at [omdbapi.com/apikey.aspx](https://www.omdbapi.com/apikey.aspx) (1,000 requests a day), click the activation link in the email, then add it to your shell:
-
-   ```bash
-   echo 'export OMDB_API_KEY=your_key' >> ~/.bashrc
-   source ~/.bashrc
-   ```
-
-   Without a key, every movie gets a frame from the video instead of a poster. OMDb is used because TMDB is not reachable from India.
-
-4. Optional: search subtitles online. Create a free account and an API consumer at [opensubtitles.com/consumers](https://www.opensubtitles.com/consumers), then:
-
-   ```bash
-   echo 'export OPENSUBTITLES_API_KEY=your_key' >> ~/.bashrc
-   source ~/.bashrc
-   ```
-
-   Without a key, subtitles still work from files. Downloads without a login are limited to a few a day.
-
-   Keys in `~/.bashrc` only reach the app when it is started from a terminal. For the installed app, see [API keys for the installed app](#api-keys-for-the-installed-app).
-
-## Installing (Fedora)
-
-1. Complete steps 1 and 2 of [Setup](#setup-fedora).
-
-2. Build the RPM package:
-
-   ```bash
    npm run tauri build -- --bundles rpm
    ```
 
-   The package is written to `src-tauri/target/release/bundle/rpm/`.
+3. Install the package from `src-tauri/target/release/bundle/rpm/`. If the same version is already installed, use `sudo dnf reinstall` instead of `install`.
 
-3. Install it:
+In development, keys set with `export OMDB_API_KEY=...` in your shell are picked up by `npm run tauri dev`.
 
-   ```bash
-   sudo dnf install ./src-tauri/target/release/bundle/rpm/blockbuster-*.rpm
-   ```
-
-4. Start Blockbuster from the app menu, or run `blockbuster` in a terminal. `mpv` and `ffmpeg` must stay installed.
-
-To update, rebuild and run the same `dnf install` command. To uninstall, run `sudo dnf remove blockbuster`. The catalog, progress and thumbnails in `~/.local/share/com.jintudas.blockbuster/` are kept in both cases.
-
-### API keys for the installed app
-
-The build contains no keys. Blockbuster reads `OMDB_API_KEY` and `OPENSUBTITLES_API_KEY` each time it starts, so you can add keys at any time without rebuilding.
-
-Apps started from the app menu do not read `~/.bashrc`. Set the keys for your login session instead:
-
-```bash
-mkdir -p ~/.config/environment.d
-cat > ~/.config/environment.d/blockbuster.conf <<'EOF'
-OMDB_API_KEY=your_omdb_key
-OPENSUBTITLES_API_KEY=your_opensubtitles_key
-EOF
-chmod 600 ~/.config/environment.d/blockbuster.conf
-```
-
-Log out and back in, then start Blockbuster. Leave out a line for a key you don't have. To try a key once without changing your session, run `OMDB_API_KEY=your_key blockbuster` from a terminal.
-
-On the first start with an OMDb key, the background pass looks up every movie that was never looked up before and replaces frame thumbnails with posters. No rescan is needed.
-
-## Running
+### Commands
 
 | Command | What it does |
 |---|---|
@@ -112,47 +210,20 @@ On the first start with an OMDb key, the background pass looks up every movie th
 | `cargo test` (in `src-tauri/`) | Run the backend tests |
 | `cargo test -- --ignored` (in `src-tauri/`) | Also run the tests that drive real mpv and ffmpeg |
 
-## How it works
-
-1. Choose a folder. Blockbuster scans it and saves the catalog. Media files are only ever read.
-2. A background pass reads each movie's quality, duration and streams, then fetches its OMDb details and poster or grabs a frame. Cards and details pages fill in as it goes, and everything is stored, so details work offline.
-3. Click a movie to play it in mpv. The position is saved every 10 seconds and when mpv closes.
-4. Play it again to resume. Movies watched past 95% start over.
-5. On a movie's page, pick the subtitle it starts with: one inside the video, a file named after it in the same folder (`Movie.en.srt`), or one you add from disk or OpenSubtitles.
-
-Rescan after adding or removing files. Changed files are detected by size; movies that disappear are hidden, not deleted, so their progress returns with them.
-
-Everything Blockbuster generates lives in its app data directory, `~/.local/share/com.jintudas.blockbuster/` on Linux:
-
-- `blockbuster.db`: the catalog, settings and playback progress (SQLite)
-- `thumbnails/`: posters and frames
-- `subtitles/`: subtitles you added (copies; your files are never moved or changed)
-
-To inspect the catalog:
+To inspect the catalog directly:
 
 ```bash
 sqlite3 -readonly -header -column ~/.local/share/com.jintudas.blockbuster/blockbuster.db \
   "SELECT title, year, quality, duration_seconds, progress_seconds FROM movies;"
 ```
 
-## Architecture
+### Architecture
 
 - **Tauri 2** for the desktop app and local file access, with the backend in Rust.
 - **React 19 + TypeScript** for the UI, with TanStack Router and Query, Tailwind v4 and shadcn/ui.
 - **SQLite** (bundled via rusqlite) for the catalog and playback progress.
 - **mpv** for playback, controlled through its JSON IPC socket.
 - **ffprobe / ffmpeg** for quality, duration and frame thumbnails.
-- **OMDb API** for posters, plot, credits and ratings.
+- **OMDb API** for posters, plot, credits and ratings. It is used instead of TMDB, which is not reachable from India.
 
 Diagrams of the components and main flows are in [docs/architecture.md](docs/architecture.md). Code conventions and module details are in [CLAUDE.md](CLAUDE.md).
-
-## Out of scope for the first milestone
-
-- Multiple library folders or network/remote streaming.
-- Automatic TV season and episode matching.
-- Favorites, ratings, watchlists, and recommendations.
-- User accounts, cloud sync, and transcoding.
-
-## First success check
-
-Select a folder containing several videos, play one for a few minutes, close playback and Blockbuster, reopen the app, and confirm that the video is still listed and resumes near its saved position.

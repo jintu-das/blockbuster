@@ -4,7 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The user picks one library folder; the Rust backend scans it into a SQLite catalog that the Home and Movies (`/movies`) pages display. Clicking a movie plays it in mpv with saved and resumed progress. After each scan a background pass reads quality, duration and streams with ffprobe, stores OMDb details (plot, credits, ratings) and makes a thumbnail (OMDb poster, else an ffmpeg frame); a movie details page shows them offline. The MVP scope lives in [README.md](README.md). Read its "MVP goal", "Features", "Architecture" and "Out of scope" sections before adding features. Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress, posters, quality and stored movie details.
+Blockbuster is a personal desktop app (Tauri 2 + React 19 + TypeScript) for browsing and playing local movies. The user picks one library folder; the Rust backend scans it into a SQLite catalog that the Home and Movies (`/movies`) pages display. Clicking a movie plays it in mpv with saved and resumed progress. After each scan a background pass reads quality, duration and streams with ffprobe, stores OMDb details (plot, credits, ratings) and makes a thumbnail (OMDb poster, else an ffmpeg frame); a movie details page shows them offline. [README.md](README.md) is the user guide; its "For developers" section has build steps and the architecture summary.
+
+### Scope
+
+Keep work inside the first-milestone scope: one library folder, local catalog, mpv playback, resume progress, posters, quality and stored movie details. The MVP goal: choose one folder, scan its video files, browse the results, play a file in mpv, and resume it from the saved position the next time it is opened.
+
+Out of scope for the first milestone:
+
+- Multiple library folders or network/remote streaming.
+- Automatic TV season and episode matching.
+- Favorites, ratings, watchlists, and recommendations.
+- User accounts, cloud sync, and transcoding.
 
 ## Commands
 
