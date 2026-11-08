@@ -115,6 +115,7 @@ fn subtitle_args(subtitles: &SubtitlePlan) -> Vec<OsString> {
 ///
 /// The flags override user config that would break tracking: `keep-open`/`idle` would keep
 /// mpv running after the movie ends, and mpv's own resume would fight Blockbuster's.
+/// Playback starts fullscreen; `f` or Esc leaves it.
 pub fn launch(
     file: &Path,
     start_seconds: Option<i64>,
@@ -128,6 +129,7 @@ pub fn launch(
         .arg(format!("--input-ipc-server={}", socket_path.display()))
         .args(["--force-window=immediate", "--keep-open=no", "--idle=no"])
         .args(["--save-position-on-quit=no", "--resume-playback=no"])
+        .arg("--fullscreen")
         .arg(format!("--title={title}"))
         .args(subtitle_args(subtitles))
         .args(extra_args)

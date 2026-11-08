@@ -84,6 +84,7 @@ Click a movie's title to open its page: the plot, cast and crew, ratings from IM
 
 ### Playback
 
+- Movies open fullscreen. Press `f` or `Esc` in mpv to switch to a window.
 - Your position is saved every 10 seconds and whenever mpv closes.
 - A movie watched past 95% counts as watched and starts from the beginning next time.
 - Opened something by mistake? If you close it within 10 seconds, nothing is recorded.
