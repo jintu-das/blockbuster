@@ -37,7 +37,7 @@ pub fn progress_to_store(playback: &Playback) -> StoredProgress {
     if finished {
         StoredProgress::Clear
     } else if position < MIN_RESUME_SECONDS {
-        StoredProgress::Skip
+        StoredProgress::Keep
     } else {
         StoredProgress::Seconds(position as i64)
     }
@@ -171,8 +171,6 @@ impl ActiveSession {
 /// Subtitles are finished off by `SubtitleSetup` once mpv reports the file's tracks.
 pub fn start(app: AppHandle, movie_id: i64, process: MpvProcess, subtitles: SubtitlePlan) -> Result<ActiveSession, String> {
     let control = process.control.try_clone().map_err(|error| error.to_string())?;
-    // Stamp `last_played_at` right away so the movie shows as recently played.
-    save(&app, movie_id, &Playback::default());
 
     let tracker = thread::spawn(move || {
         let MpvProcess { mut child, mut control, events, socket_file: _socket_file } = process;
@@ -216,7 +214,7 @@ mod tests {
         assert_eq!(progress_to_store(&playback(Some(1800.4), Some(7000.0), false)), StoredProgress::Seconds(1800));
         assert_eq!(progress_to_store(&playback(Some(6900.0), Some(7000.0), false)), StoredProgress::Clear);
         assert_eq!(progress_to_store(&playback(Some(1800.0), Some(7000.0), true)), StoredProgress::Clear);
-        assert_eq!(progress_to_store(&playback(Some(4.0), Some(7000.0), false)), StoredProgress::Skip);
+        assert_eq!(progress_to_store(&playback(Some(4.0), Some(7000.0), false)), StoredProgress::Keep);
         assert_eq!(progress_to_store(&playback(None, Some(7000.0), false)), StoredProgress::Keep);
         assert_eq!(progress_to_store(&playback(Some(1800.0), None, false)), StoredProgress::Seconds(1800));
     }
@@ -381,6 +379,6 @@ mod tests {
         assert!((5.0..8.0).contains(&position), "position {position}");
         assert!(result.duration.is_some_and(|duration| (19.0..21.0).contains(&duration)));
         assert!(!result.ended_at_eof);
-        assert_eq!(progress_to_store(&result), StoredProgress::Skip, "under 10 s is not a play");
+        assert_eq!(progress_to_store(&result), StoredProgress::Keep, "under 10 s is not a play");
     }
 }
